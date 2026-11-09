@@ -32,7 +32,7 @@ Testcontainers owns one service per provider for the package run. The harness re
 - Azure: Lowkey Vault 7.4.0, latest text versions and repeated soft deletion. It rejects empty values, which is covered explicitly as an emulator limitation.
 - Vault: real Vault 1.21.4, version-checked at runtime, including owned soft-deleted paths and refusal to destroy shared paths.
 
-File tests use actual descriptor reads and projected-volume rotation layouts. Linux/macOS CI runs the slash-symlink confinement regression on Go 1.25.12, Go 1.26.5, and stable. Windows runs its descriptor suite separately. Do not remove the patched-toolchain policy merely because a later Go branch satisfies the module directive.
+File tests use actual descriptor reads, projected-volume rotation layouts, and concurrent symlink swaps. Linux/macOS CI runs the slash-symlink confinement regression on Go 1.25.12, Go 1.26.5, and stable. Windows runs its descriptor suite separately. Do not remove the patched-toolchain policy merely because a later Go branch satisfies the module directive.
 
 ## Module publication
 

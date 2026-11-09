@@ -82,3 +82,72 @@ func TestFIFO(t *testing.T) {
 		t.Fatal("FIFO open blocked")
 	}
 }
+
+// TestConfinementDuringSymlinkSwaps refuses outside data while an unprivileged writer swaps a bound path.
+func TestConfinementDuringSymlinkSwaps(t *testing.T) {
+	directory := t.TempDir()
+	outside := t.TempDir()
+	if err := os.Mkdir(filepath.Join(directory, "inside"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(directory, "inside/key"), []byte("public-inside"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(outside, "key"), []byte("public-outside"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("inside", filepath.Join(directory, "entry")); err != nil {
+		t.Fatal(err)
+	}
+	root, err := os.OpenRoot(directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer root.Close()
+	reader, err := New(root, map[string]string{"KEY": "entry/key"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if value, err := reader.Get(context.Background(), "KEY"); err != nil || value != "public-inside" {
+		t.Fatal("contained path unavailable")
+	}
+	stop := make(chan struct{})
+	done := make(chan error, 1)
+	go func() {
+		for {
+			for _, target := range []string{outside, "inside"} {
+				select {
+				case <-stop:
+					done <- nil
+					return
+				default:
+				}
+				next := filepath.Join(directory, "next")
+				if err := os.Symlink(target, next); err != nil {
+					done <- err
+					return
+				}
+				if err := os.Rename(next, filepath.Join(directory, "entry")); err != nil {
+					done <- err
+					return
+				}
+			}
+		}
+	}()
+	defer func() {
+		close(stop)
+		if err := <-done; err != nil {
+			t.Error("symlink fixture failed")
+		}
+	}()
+	for range 500 {
+		value, err := reader.Get(context.Background(), "KEY")
+		if err == nil {
+			if value != "public-inside" {
+				t.Fatal("root confinement failed during a path swap")
+			}
+		} else if value != "" || !errors.Is(err, secret.ErrUnavailable) && !errors.Is(err, secret.ErrNotFound) {
+			t.Fatal("unsafe path failure classification", err)
+		}
+	}
+}

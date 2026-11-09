@@ -1,9 +1,10 @@
 {
-  "source": "ef0c77699dd53a17ee805642102a0f0c88510f6b4da9c1f09eb6c46e224ccd56",
-  "tests": 77,
+  "source": "abcc1349cfb9c716f136dca3f5b6ea3ca71312619fdff8007195f44d78e2b0c3",
+  "tests": 78,
   "covered": 612,
   "total": 612,
   "cases": [
+    "TestConfinementDuringSymlinkSwaps",
     "TestConstructor",
     "TestDelete",
     "TestDescriptorFailures",
