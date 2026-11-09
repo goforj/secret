@@ -12,27 +12,27 @@ import (
 // TestRequestContract freezes validation precedence and safe context normalization independently per module.
 func TestRequestContract(t *testing.T) {
 	for _, name := range []string{"", "lower", "_A", "A-B", "A/B", "A\x00", strings.Repeat("A", 256), "É"} {
-		if err := request(context.Background(), name, true); !errors.Is(err, secret.ErrInvalid) {
+		if err := lookupError(context.Background(), name, true); !errors.Is(err, secret.ErrInvalid) {
 			t.Fatal("invalid name accepted")
 		}
 	}
 	for _, name := range []string{"A", "A_1", strings.Repeat("A", 255)} {
-		if err := request(context.Background(), name, true); err != nil {
+		if err := lookupError(context.Background(), name, true); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if err := request(nil, "KEY", true); !errors.Is(err, secret.ErrInvalid) {
+	if err := lookupError(nil, "KEY", true); !errors.Is(err, secret.ErrInvalid) {
 		t.Fatal(err)
 	}
-	if err := request(context.Background(), "UNKNOWN", false); !errors.Is(err, secret.ErrNotFound) || strings.Contains(err.Error(), "UNKNOWN") {
+	if err := lookupError(context.Background(), "UNKNOWN", false); !errors.Is(err, secret.ErrNotFound) || strings.Contains(err.Error(), "UNKNOWN") {
 		t.Fatal("unknown name disclosed")
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	if err := request(ctx, "UNKNOWN", false); !errors.Is(err, secret.ErrNotFound) {
+	if err := lookupError(ctx, "UNKNOWN", false); !errors.Is(err, secret.ErrNotFound) {
 		t.Fatal(err)
 	}
-	if err := request(ctx, "KEY", true); !errors.Is(err, context.Canceled) {
+	if err := lookupError(ctx, "KEY", true); !errors.Is(err, context.Canceled) {
 		t.Fatal(err)
 	}
 	if err := failure(ctx, secret.ErrUnavailable); !errors.Is(err, context.Canceled) {
@@ -43,7 +43,7 @@ func TestRequestContract(t *testing.T) {
 	}
 	deadline, stop := context.WithDeadline(context.Background(), time.Now().Add(-time.Second))
 	defer stop()
-	if err := request(deadline, "KEY", true); !errors.Is(err, context.DeadlineExceeded) {
+	if err := lookupError(deadline, "KEY", true); !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatal(err)
 	}
 }
@@ -122,4 +122,14 @@ func TestGateAlreadyCanceledSelection(t *testing.T) {
 	if err := acquire(ctx, gate); !errors.Is(err, context.Canceled) {
 		t.Fatal(err)
 	}
+}
+
+// lookupError drives the actual generic lookup contract with present and absent test bindings.
+func lookupError(ctx context.Context, name string, known bool) error {
+	bindings := map[string]int{}
+	if known {
+		bindings[name] = 1
+	}
+	_, err := lookup(ctx, name, bindings)
+	return err
 }

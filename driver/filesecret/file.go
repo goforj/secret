@@ -57,8 +57,8 @@ func validPath(path string) bool {
 
 // Get opens and validates the same descriptor, preserving all bytes without trimming.
 func (r *Reader) Get(ctx context.Context, name string) (string, error) {
-	path, ok := r.bindings[name]
-	if err := request(ctx, name, ok); err != nil {
+	path, err := lookup(ctx, name, r.bindings)
+	if err != nil {
 		return "", err
 	}
 	file, err := open(r.root, path)

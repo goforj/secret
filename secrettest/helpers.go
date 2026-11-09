@@ -18,21 +18,26 @@ func validName(name string) bool {
 	return true
 }
 
-// request prevents invalid, unknown, or canceled requests from reaching a provider.
-func request(ctx context.Context, name string, known bool) error {
+// request validates fixture mutations before changing the map.
+func request(ctx context.Context, name string) error {
 	if ctx == nil || !validName(name) {
 		return secret.ErrInvalid
-	}
-	if !known {
-		return secret.ErrNotFound
 	}
 	return ctx.Err()
 }
 
-// failure retains only a stable classification and the caller's context state.
-func failure(ctx context.Context, kind error) error {
-	if err := ctx.Err(); err != nil {
-		return err
+// lookup validates bounded application names before hashing caller input into the binding catalog.
+func lookup[T any](ctx context.Context, name string, bindings map[string]T) (T, error) {
+	var zero T
+	if ctx == nil || !validName(name) {
+		return zero, secret.ErrInvalid
 	}
-	return kind
+	value, known := bindings[name]
+	if !known {
+		return zero, secret.ErrNotFound
+	}
+	if err := ctx.Err(); err != nil {
+		return zero, err
+	}
+	return value, nil
 }

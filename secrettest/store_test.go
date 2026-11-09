@@ -29,6 +29,12 @@ func TestStore(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	if err := s.Set(nil, "KEY", ""); !errors.Is(err, secret.ErrInvalid) {
+		t.Fatal(err)
+	}
+	if err := s.Delete(nil, "KEY"); !errors.Is(err, secret.ErrInvalid) {
+		t.Fatal(err)
+	}
 	if _, err := s.Get(nil, "KEY"); !errors.Is(err, secret.ErrInvalid) {
 		t.Fatal(err)
 	}

@@ -111,8 +111,8 @@ func readError(ctx context.Context, err error, current bool) error {
 
 // Get leaves version selectors unset so AWS selects AWSCURRENT.
 func (s *Store) Get(ctx context.Context, name string) (string, error) {
-	b, ok := s.bindings[name]
-	if err := request(ctx, name, ok); err != nil {
+	b, err := lookup(ctx, name, s.bindings)
+	if err != nil {
 		return "", err
 	}
 	result, err := s.client.GetSecretValue(ctx, &secretsmanager.GetSecretValueInput{SecretId: &b.ARN})
@@ -138,8 +138,8 @@ func (s *Store) Get(ctx context.Context, name string) (string, error) {
 
 // Set replaces an active resource, reconciling only AWS's ambiguous InvalidRequest state.
 func (s *Store) Set(ctx context.Context, name, value string) error {
-	b, ok := s.bindings[name]
-	if err := request(ctx, name, ok); err != nil {
+	b, err := lookup(ctx, name, s.bindings)
+	if err != nil {
 		return err
 	}
 	if len(value) == 0 || len(value) > MaxValueBytes || b.Encoding == Text && !utf8.ValidString(value) {
@@ -192,8 +192,8 @@ func (s *Store) Set(ctx context.Context, name, value string) error {
 
 // Delete requests AWS's standard recovery window without forcing destruction.
 func (s *Store) Delete(ctx context.Context, name string) error {
-	b, ok := s.bindings[name]
-	if err := request(ctx, name, ok); err != nil {
+	b, err := lookup(ctx, name, s.bindings)
+	if err != nil {
 		return err
 	}
 	if err := acquire(ctx, b.gate); err != nil {

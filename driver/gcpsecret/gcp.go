@@ -76,8 +76,8 @@ func readError(ctx context.Context, err error, current bool) error {
 
 // Get verifies CRC32C before returning the latest version's exact bytes.
 func (s *Store) Get(ctx context.Context, name string) (string, error) {
-	b, ok := s.bindings[name]
-	if err := request(ctx, name, ok); err != nil {
+	b, err := lookup(ctx, name, s.bindings)
+	if err != nil {
 		return "", err
 	}
 	value, err := s.client.AccessSecretVersion(ctx, &secretmanagerpb.AccessSecretVersionRequest{Name: b.resource + "/versions/latest"})
@@ -92,8 +92,8 @@ func (s *Store) Get(ctx context.Context, name string) (string, error) {
 
 // Set publishes exact bytes without automatic AddSecretVersion retries or resource creation.
 func (s *Store) Set(ctx context.Context, name, value string) error {
-	b, ok := s.bindings[name]
-	if err := request(ctx, name, ok); err != nil {
+	b, err := lookup(ctx, name, s.bindings)
+	if err != nil {
 		return err
 	}
 	if len(value) > MaxValueBytes {
@@ -105,7 +105,7 @@ func (s *Store) Set(ctx context.Context, name, value string) error {
 	defer func() { <-b.gate }()
 	data := []byte(value)
 	checksum := int64(crc32.Checksum(data, checksumTable))
-	_, err := s.client.AddSecretVersion(ctx, &secretmanagerpb.AddSecretVersionRequest{Parent: b.resource, Payload: &secretmanagerpb.SecretPayload{Data: data, DataCrc32C: &checksum}}, gax.WithRetry(func() gax.Retryer { return nil }))
+	_, err = s.client.AddSecretVersion(ctx, &secretmanagerpb.AddSecretVersionRequest{Parent: b.resource, Payload: &secretmanagerpb.SecretPayload{Data: data, DataCrc32C: &checksum}}, gax.WithRetry(func() gax.Retryer { return nil }))
 	if err == nil {
 		return nil
 	}
@@ -117,8 +117,8 @@ func (s *Store) Set(ctx context.Context, name, value string) error {
 
 // Delete guards the whole-resource deletion with the preflight ETag.
 func (s *Store) Delete(ctx context.Context, name string) error {
-	b, ok := s.bindings[name]
-	if err := request(ctx, name, ok); err != nil {
+	b, err := lookup(ctx, name, s.bindings)
+	if err != nil {
 		return err
 	}
 	if err := acquire(ctx, b.gate); err != nil {

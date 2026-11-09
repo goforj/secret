@@ -32,16 +32,12 @@ func New(t testing.TB, values map[string]string) secret.Store {
 func (s *store) Get(ctx context.Context, name string) (string, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	value, ok := s.values[name]
-	if err := request(ctx, name, ok); err != nil {
-		return "", err
-	}
-	return value, nil
+	return lookup(ctx, name, s.values)
 }
 
 // Set permits adding fixtures while retaining production name and context validation.
 func (s *store) Set(ctx context.Context, name, value string) error {
-	if err := request(ctx, name, true); err != nil {
+	if err := request(ctx, name); err != nil {
 		return err
 	}
 	s.mu.Lock()
@@ -52,7 +48,7 @@ func (s *store) Set(ctx context.Context, name, value string) error {
 
 // Delete removes a fixture idempotently, including when it is already absent.
 func (s *store) Delete(ctx context.Context, name string) error {
-	if err := request(ctx, name, true); err != nil {
+	if err := request(ctx, name); err != nil {
 		return err
 	}
 	s.mu.Lock()

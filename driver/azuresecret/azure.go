@@ -123,8 +123,8 @@ func readError(ctx context.Context, err error) error {
 
 // Get requests the latest version and rejects malformed or oversized text.
 func (s *Store) Get(ctx context.Context, name string) (string, error) {
-	b, ok := s.bindings[name]
-	if err := request(ctx, name, ok); err != nil {
+	b, err := lookup(ctx, name, s.bindings)
+	if err != nil {
 		return "", err
 	}
 	value, err := s.client.GetSecret(ctx, b.Name, "", nil)
@@ -140,8 +140,8 @@ func (s *Store) Get(ctx context.Context, name string) (string, error) {
 // Set checks existence before publishing authoritative binding metadata.
 // External delete/purge/recreate races require exclusive lifecycle ownership.
 func (s *Store) Set(ctx context.Context, name, value string) error {
-	b, ok := s.bindings[name]
-	if err := request(ctx, name, ok); err != nil {
+	b, err := lookup(ctx, name, s.bindings)
+	if err != nil {
 		return err
 	}
 	if len(value) > MaxValueBytes || !utf8.ValidString(value) {
@@ -151,7 +151,7 @@ func (s *Store) Set(ctx context.Context, name, value string) error {
 		return err
 	}
 	defer func() { <-b.gate }()
-	_, err := s.client.GetSecret(ctx, b.Name, "", nil)
+	_, err = s.client.GetSecret(ctx, b.Name, "", nil)
 	if err != nil {
 		return readError(ctx, err)
 	}
@@ -200,15 +200,15 @@ func deleting(err error) bool {
 
 // Delete initiates vault-configured soft deletion without purging or polling.
 func (s *Store) Delete(ctx context.Context, name string) error {
-	b, ok := s.bindings[name]
-	if err := request(ctx, name, ok); err != nil {
+	b, err := lookup(ctx, name, s.bindings)
+	if err != nil {
 		return err
 	}
 	if err := acquire(ctx, b.gate); err != nil {
 		return err
 	}
 	defer func() { <-b.gate }()
-	_, err := s.client.DeleteSecret(ctx, b.Name, nil)
+	_, err = s.client.DeleteSecret(ctx, b.Name, nil)
 	if err == nil {
 		return nil
 	}

@@ -1,8 +1,8 @@
 {
-  "source": "c5535cb44818c1b83b6ac5c18853644bad496be12894bec41ca58fa829d22e53",
+  "source": "ef0c77699dd53a17ee805642102a0f0c88510f6b4da9c1f09eb6c46e224ccd56",
   "tests": 77,
-  "covered": 591,
-  "total": 591,
+  "covered": 612,
+  "total": 612,
   "cases": [
     "TestConstructor",
     "TestDelete",

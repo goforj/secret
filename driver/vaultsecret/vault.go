@@ -101,8 +101,8 @@ func owned(metadata *api.KVMetadata) bool {
 
 // Get selects only the latest version and returns its exact scalar value.
 func (s *Store) Get(ctx context.Context, name string) (string, error) {
-	b, ok := s.bindings[name]
-	if err := request(ctx, name, ok); err != nil {
+	b, err := lookup(ctx, name, s.bindings)
+	if err != nil {
 		return "", err
 	}
 	value, err := s.client.Get(ctx, b.path)
@@ -118,8 +118,8 @@ func (s *Store) Get(ctx context.Context, name string) (string, error) {
 
 // Set validates ownership and publishes with CAS. A failed Put may already have committed.
 func (s *Store) Set(ctx context.Context, name, value string) error {
-	b, ok := s.bindings[name]
-	if err := request(ctx, name, ok); err != nil {
+	b, err := lookup(ctx, name, s.bindings)
+	if err != nil {
 		return err
 	}
 	if len(value) > MaxValueBytes || !utf8.ValidString(value) {
@@ -158,8 +158,8 @@ func (s *Store) Set(ctx context.Context, name, value string) error {
 
 // Delete removes all versions and metadata only after proving exclusive scalar ownership.
 func (s *Store) Delete(ctx context.Context, name string) error {
-	b, ok := s.bindings[name]
-	if err := request(ctx, name, ok); err != nil {
+	b, err := lookup(ctx, name, s.bindings)
+	if err != nil {
 		return err
 	}
 	if err := acquire(ctx, b.gate); err != nil {
