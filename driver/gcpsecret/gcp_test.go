@@ -10,7 +10,10 @@ import (
 	"google.golang.org/grpc/status"
 	"hash/crc32"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 )
 
 // fakeClient records typed SDK requests and per-call retry policy.
@@ -235,4 +238,56 @@ func TestMutationCanceledBeforeGate(t *testing.T) {
 	s, _ := fixture(t)
 	expect(t, s.Set(&stagedContext{Context: context.Background()}, "KEY", "x"), context.Canceled)
 	expect(t, s.Delete(&stagedContext{Context: context.Background()}, "KEY"), context.Canceled)
+}
+
+// TestStoreMutationConcurrency proves canceled waiters make no SDK call and other bindings remain independent.
+func TestStoreMutationConcurrency(t *testing.T) {
+	c := &fakeClient{}
+	entered := make(chan struct{})
+	release := make(chan struct{})
+	defer close(release)
+	var once sync.Once
+	var calls atomic.Int32
+	s, err := New(c, "projects/test", map[string]string{"KEY": "key", "OTHER": "other"})
+	c.add = func(ctx context.Context, in *secretmanagerpb.AddSecretVersionRequest, _ ...gax.CallOption) (*secretmanagerpb.SecretVersion, error) {
+		if in.Parent == "projects/test/secrets/key" {
+			calls.Add(1)
+			once.Do(func() { close(entered) })
+			select {
+			case <-release:
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			}
+		}
+		return nil, nil
+	}
+
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, stop := context.WithTimeout(context.Background(), time.Second)
+	defer stop()
+	done := make(chan error, 1)
+	go func() { done <- s.Set(ctx, "KEY", "public-replacement") }()
+	select {
+	case <-entered:
+	case <-ctx.Done():
+		t.Fatal("first mutation did not enter provider")
+	}
+	waiting, cancel := context.WithTimeout(ctx, 20*time.Millisecond)
+	defer cancel()
+	if err := s.Delete(waiting, "KEY"); !errors.Is(err, context.DeadlineExceeded) || errors.Is(err, secret.ErrIndeterminate) {
+		t.Fatal("canceled waiter dispatched", err)
+	}
+	if calls.Load() != 1 {
+		t.Fatal("same-binding waiter reached provider")
+	}
+	if err := s.Set(ctx, "OTHER", "public-replacement"); err != nil {
+		t.Fatal("independent binding blocked", err)
+	}
+	// Cancel the first request so the blocked fixture exits without leaving a goroutine.
+	stop()
+	if err := <-done; !errors.Is(err, context.Canceled) {
+		t.Fatal("in-flight context lost", err)
+	}
 }

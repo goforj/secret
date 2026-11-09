@@ -9,6 +9,8 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -235,5 +237,60 @@ func TestDelete(t *testing.T) {
 			return azsecrets.DeleteSecretResponse{}, test.cause
 		}
 		expect(t, s.Delete(ctx, "KEY"), test.want)
+	}
+}
+
+// TestStoreMutationConcurrency proves canceled waiters make no SDK call and other bindings remain independent.
+func TestStoreMutationConcurrency(t *testing.T) {
+	c := &fakeClient{}
+	entered := make(chan struct{})
+	release := make(chan struct{})
+	defer close(release)
+	var once sync.Once
+	var calls atomic.Int32
+	s, err := New(c, map[string]Binding{"KEY": {Name: "key"}, "OTHER": {Name: "other"}})
+	c.get = func(ctx context.Context, name, version string, _ *azsecrets.GetSecretOptions) (azsecrets.GetSecretResponse, error) {
+		if name == "key" {
+			calls.Add(1)
+			once.Do(func() { close(entered) })
+			select {
+			case <-release:
+			case <-ctx.Done():
+				return azsecrets.GetSecretResponse{}, ctx.Err()
+			}
+		}
+		return azsecrets.GetSecretResponse{Secret: azsecrets.Secret{Value: ptr("public-fixture")}}, nil
+	}
+	c.set = func(context.Context, string, azsecrets.SetSecretParameters, *azsecrets.SetSecretOptions) (azsecrets.SetSecretResponse, error) {
+		return azsecrets.SetSecretResponse{}, nil
+	}
+
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, stop := context.WithTimeout(context.Background(), time.Second)
+	defer stop()
+	done := make(chan error, 1)
+	go func() { done <- s.Set(ctx, "KEY", "public-replacement") }()
+	select {
+	case <-entered:
+	case <-ctx.Done():
+		t.Fatal("first mutation did not enter provider")
+	}
+	waiting, cancel := context.WithTimeout(ctx, 20*time.Millisecond)
+	defer cancel()
+	if err := s.Delete(waiting, "KEY"); !errors.Is(err, context.DeadlineExceeded) || errors.Is(err, secret.ErrIndeterminate) {
+		t.Fatal("canceled waiter dispatched", err)
+	}
+	if calls.Load() != 1 {
+		t.Fatal("same-binding waiter reached provider")
+	}
+	if err := s.Set(ctx, "OTHER", "public-replacement"); err != nil {
+		t.Fatal("independent binding blocked", err)
+	}
+	// Cancel the first request so the blocked fixture exits without leaving a goroutine.
+	stop()
+	if err := <-done; !errors.Is(err, context.Canceled) {
+		t.Fatal("in-flight context lost", err)
 	}
 }
