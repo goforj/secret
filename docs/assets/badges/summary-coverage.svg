@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="159" height="24" viewBox="0 0 159 24" role="img" aria-label="unit coverage: 100%">
+  <title>unit coverage: 100%</title>
+  <defs><clipPath id="badge"><rect width="159" height="24" rx="6"/></clipPath></defs>
+  <g clip-path="url(#badge)">
+    <rect width="159" height="24" fill="#263247"/>
+    <rect x="111" width="48" height="24" fill="#5369ca"/>
+  </g>
+  <g fill="#fff" font-family="Verdana,DejaVu Sans,sans-serif" font-size="11" text-anchor="middle">
+    <text x="55.5" y="16">unit coverage</text>
+    <text x="135" y="16">100%</text>
+  </g>
+</svg>

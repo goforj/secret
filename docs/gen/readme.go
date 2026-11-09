@@ -125,11 +125,24 @@ func ExampleSections(root string) (string, string, error) {
 	return index.String(), examples.String(), nil
 }
 
-// badge creates simple repository-owned status assets with accessible text.
+// badge centers padded labels inside a shared rounded clip so neither segment can square off an end.
 func badge(label, value string) string {
-	width := len(label+value)*6 + 28
-	left := len(label)*6 + 14
-	return fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="20" role="img" aria-label="%s: %s"><title>%s: %s</title><rect width="%d" height="20" rx="4" fill="#263247"/><path d="M%d 0h%dv20H%d" fill="#5369ca"/><g fill="#fff" font-family="Verdana,DejaVu Sans,sans-serif" font-size="11"><text x="7" y="14">%s</text><text x="%d" y="14">%s</text></g></svg>`+"\n", width, html.EscapeString(label), html.EscapeString(value), html.EscapeString(label), html.EscapeString(value), width, left, width-left, left, html.EscapeString(label), left+7, html.EscapeString(value))
+	left := len(label)*7 + 20
+	right := len(value)*7 + 20
+	width := left + right
+	return fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="24" viewBox="0 0 %d 24" role="img" aria-label="%s: %s">
+  <title>%s: %s</title>
+  <defs><clipPath id="badge"><rect width="%d" height="24" rx="6"/></clipPath></defs>
+  <g clip-path="url(#badge)">
+    <rect width="%d" height="24" fill="#263247"/>
+    <rect x="%d" width="%d" height="24" fill="#5369ca"/>
+  </g>
+  <g fill="#fff" font-family="Verdana,DejaVu Sans,sans-serif" font-size="11" text-anchor="middle">
+    <text x="%g" y="16">%s</text>
+    <text x="%g" y="16">%s</text>
+  </g>
+</svg>
+`, width, width, html.EscapeString(label), html.EscapeString(value), html.EscapeString(label), html.EscapeString(value), width, width, left, right, float64(left)/2, html.EscapeString(label), float64(left)+float64(right)/2, html.EscapeString(value))
 }
 
 // icon wraps original vector paths in the compact family badge treatment.
@@ -211,7 +224,7 @@ func Generate(root string) error {
 		return err
 	}
 	for key, pair := range map[string][2]string{"status": {"status", "unreleased"}, "go": {"Go", "1.24.4+"}, "license": {"license", "MIT"}, "coverage": {"unit coverage", "100%"}, "tests": {"unit tests", fmt.Sprint(unit.Tests)}} {
-		if err := write(root, "docs/assets/badges/"+key+".svg", badge(pair[0], pair[1])); err != nil {
+		if err := write(root, "docs/assets/badges/summary-"+key+".svg", badge(pair[0], pair[1])); err != nil {
 			return err
 		}
 	}
