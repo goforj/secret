@@ -22,6 +22,7 @@ type Example struct {
 var Examples = []Example{
 	{"mounted-files", "Read mounted files", "examples/files/main.go", []string{"filesecret.New", "Reader.Get"}},
 	{"reader-adapter", "Adapt an existing reader", "examples/reader/main.go", []string{"Func.Get", "ErrNotFound"}},
+	{"mutation-errors", "Handle an uncertain write", "examples/errors/main.go", []string{"Writer.Set", "ErrIndeterminate"}},
 	{"application-testing", "Test replacements and deletion", "examples/testing_test.go", []string{"secrettest.New", "Store.Set", "Store.Delete"}},
 }
 

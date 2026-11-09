@@ -112,6 +112,7 @@ Development replacements intentionally exercise unpublished sibling modules. Rel
 | --- | --- |
 | [Mounted files](examples/files/main.go) | `go -C examples run ./files` |
 | [Reader adapter](examples/reader/main.go) | `go -C examples run ./reader` |
+| [Uncertain writes](examples/errors/main.go) | `go -C examples run ./errors` |
 | [Application tests](examples/testing_test.go) | `go -C examples test -run TestStore -v` |
 
 Every program is executed by the shared example runner and checked against the output comments beside its calls. Test fixtures use public placeholder values.
@@ -124,6 +125,8 @@ Every program is executed by the shared example runner and checked against the o
 | [Reader.Get](#mounted-files) | Read mounted files |
 | [Func.Get](#reader-adapter) | Adapt an existing reader |
 | [ErrNotFound](#reader-adapter) | Adapt an existing reader |
+| [Writer.Set](#mutation-errors) | Handle an uncertain write |
+| [ErrIndeterminate](#mutation-errors) | Handle an uncertain write |
 | [secrettest.New](#application-testing) | Test replacements and deletion |
 | [Store.Set](#application-testing) | Test replacements and deletion |
 | [Store.Delete](#application-testing) | Test replacements and deletion |
@@ -180,6 +183,23 @@ fmt.Println("missing:", errors.Is(err, secret.ErrNotFound))
 // Output: missing: true
 ```
 
+<a id="mutation-errors"></a>
+
+### Handle an uncertain write
+
+```go
+err := writer.Set(context.Background(), "DATABASE_PASSWORD", "public-replacement")
+if errors.Is(err, secret.ErrIndeterminate) {
+	// Read back or reconcile through provider tooling before attempting another write.
+	fmt.Println("check provider state before retrying")
+	// Output: check provider state before retrying
+} else if err != nil {
+	panic(err)
+}
+fmt.Println("deadline still detectable:", errors.Is(err, context.DeadlineExceeded))
+// Output: deadline still detectable: true
+```
+
 <a id="application-testing"></a>
 
 ### Test replacements and deletion
@@ -222,6 +242,8 @@ Values are ordinary strings. Reads preserve exact bytes within the provider's ca
 `Set` publishes a new current value at an existing resource. `Delete` targets the entire resource using its provider's retention policy. A Store serializes same-binding mutations; different bindings and reads can proceed concurrently. Mutable bindings require exclusive lifecycle ownership. Provider SDK retries remain caller-owned except Google version creation, where the driver disables automatic retries.
 
 Errors support `errors.Is` with `ErrInvalid`, `ErrNotFound`, `ErrPermission`, `ErrUnavailable`, and `ErrIndeterminate`. An indeterminate mutation may have committed; reconcile before retrying. Caller cancellation remains detectable, including alongside `ErrIndeterminate`. Provider errors and response bodies are never retained in the public error graph.
+
+Check `ErrIndeterminate` before cancellation or deadline errors when handling a failed mutation. A canceled request can still have committed remotely. The [uncertain-write example](#mutation-errors) demonstrates this ordering without contacting a provider.
 
 Constructing code owns the SDK client or file root. Drivers borrow them and never close them. Review SDK logging separately: first-party drivers do not log, but injected client logging can disclose provider metadata.
 

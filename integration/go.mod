@@ -9,11 +9,11 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.47.8
 	github.com/aws/aws-sdk-go-v2/credentials v1.20.16
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.50.11
-	github.com/goforj/secret v0.0.0
-	github.com/goforj/secret/driver/awssecret v0.0.0
-	github.com/goforj/secret/driver/azuresecret v0.0.0
-	github.com/goforj/secret/driver/gcpsecret v0.0.0
-	github.com/goforj/secret/driver/vaultsecret v0.0.0
+	github.com/goforj/secret v0.1.0
+	github.com/goforj/secret/driver/awssecret v0.1.0
+	github.com/goforj/secret/driver/azuresecret v0.1.0
+	github.com/goforj/secret/driver/gcpsecret v0.1.0
+	github.com/goforj/secret/driver/vaultsecret v0.1.0
 	github.com/hashicorp/vault/api v1.23.0
 	github.com/testcontainers/testcontainers-go v0.45.0
 	google.golang.org/api v0.304.0

@@ -1,8 +1,8 @@
 {
-  "source": "abcc1349cfb9c716f136dca3f5b6ea3ca71312619fdff8007195f44d78e2b0c3",
-  "tests": 78,
-  "covered": 612,
-  "total": 612,
+  "source": "ce2c743eda7d9ab581a874e2687573222369f5a360eeee7e05c5d691f06e186e",
+  "tests": 81,
+  "covered": 616,
+  "total": 616,
   "cases": [
     "TestConfinementDuringSymlinkSwaps",
     "TestConstructor",
@@ -51,6 +51,9 @@
     "TestSDKMissingTranslation",
     "TestSet",
     "TestStore",
+    "TestStoreCanceledWhileWaiting",
+    "TestStoreCanceledWhileWaiting/Delete",
+    "TestStoreCanceledWhileWaiting/Set",
     "TestStoreMutationConcurrency"
   ]
 }

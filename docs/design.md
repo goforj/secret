@@ -14,7 +14,7 @@ See [provider contracts](drivers.md) for measured emulator limits and [developme
 
 - Design status: implementation-ready with provider error and release verification requirements
 - Planning date: 2026-09-06
-- Last reviewed: 2026-09-12
+- Last reviewed: 2026-11-09
 - Target repositories: `github.com/goforj/secret` and independent provider driver modules
 - Primary scope: simple application-facing read, write, and delete operations over configured secret sources
 
@@ -156,7 +156,7 @@ reader := secrettest.New(t, map[string]string{
 })
 ```
 
-Its complete constructor is `func New(t testing.TB, values map[string]string) secret.Store`. It marks itself as a test helper, validates and copies its input, fails the test for an invalid fixture, and returns a concurrency-safe in-memory Store whose configured-name catalog remains fixed. Get on an unknown or deleted name returns ErrNotFound. Set replaces an existing configured value but returns ErrNotFound for an unknown or deleted name. Delete is idempotent for a configured name and removes its current value without removing its binding. An explicitly empty fixture or Set value remains valid. Tests that need read failures or changing computed values use `secret.Func`; tests that need mutation failures define the narrow interface directly so failure behavior remains explicit.
+Its complete constructor is `func New(t testing.TB, values map[string]string) secret.Store`. It marks itself as a test helper, validates and copies its input, fails the test for an invalid fixture, and returns a concurrency-safe in-memory Store. Get on an unknown or deleted name returns ErrNotFound. Set may add or replace fixtures, including previously deleted names. Delete is idempotent even for an absent fixture. This is a deliberate testing convenience: production drivers require pre-provisioned resources and cannot create bindings through Set. Set and Delete recheck cancellation after obtaining the fixture lock, so a request canceled while waiting leaves the fixture unchanged. An explicitly empty fixture or Set value remains valid. Tests that need read failures or changing computed values use `secret.Func`; tests that need mutation failures define the narrow interface directly so failure behavior remains explicit.
 
 Func forwards the function's value and error unchanged after request validation. The function owner is responsible for concurrency safety and for preventing sensitive values or provider details from entering its errors. The stronger sanitization and concurrency guarantees in this design apply to built-in driver Readers, not arbitrary third-party implementations of Reader.
 

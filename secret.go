@@ -24,17 +24,20 @@ var ErrIndeterminate = errors.New("secret: mutation outcome unknown")
 
 // Reader retrieves exact values by application name. Consumers normally need only this capability.
 type Reader interface {
-	Get(context.Context, string) (string, error)
+	// Get retrieves the current value for a configured application name without trimming it.
+	Get(ctx context.Context, name string) (string, error)
 }
 
 // Writer publishes a replacement at an already provisioned binding.
 type Writer interface {
-	Set(context.Context, string, string) error
+	// Set replaces the current value; ErrIndeterminate requires reconciliation before retrying.
+	Set(ctx context.Context, name, value string) error
 }
 
 // Deleter requests whole-resource deletion under the provider's retention policy.
 type Deleter interface {
-	Delete(context.Context, string) error
+	// Delete removes the bound resource under its provider's retention policy.
+	Delete(ctx context.Context, name string) error
 }
 
 // Store combines read and mutation capabilities. Narrow interfaces do not replace provider authorization.

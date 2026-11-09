@@ -11,7 +11,7 @@ require (
 require (
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.50.11
 	github.com/aws/smithy-go v1.28.8
-	github.com/goforj/secret v0.0.0
+	github.com/goforj/secret v0.1.0
 )
 
 replace github.com/goforj/secret => ../..

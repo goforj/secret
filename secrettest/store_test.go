@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 )
 
 // TestStore verifies independent fixtures, byte fidelity, validation, and concurrent mutation.
@@ -90,4 +91,53 @@ func TestInvalidFixture(t *testing.T) {
 		}
 	}()
 	New(invalidFixtureTB{t}, map[string]string{"invalid": "public-fixture"})
+}
+
+// observedContext signals when mutation validation has checked the original context state.
+type observedContext struct {
+	context.Context
+	checked chan struct{}
+	once    sync.Once
+}
+
+// Err snapshots cancellation before signaling so the test cancels after the initial check.
+func (c *observedContext) Err() error {
+	err := c.Context.Err()
+	c.once.Do(func() { close(c.checked) })
+	return err
+}
+
+// TestStoreCanceledWhileWaiting prevents canceled fixture mutations from changing application state.
+func TestStoreCanceledWhileWaiting(t *testing.T) {
+	for _, method := range []string{"Set", "Delete"} {
+		t.Run(method, func(t *testing.T) {
+			s := New(t, map[string]string{"KEY": "public-initial"}).(*store)
+			parent, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			ctx := &observedContext{Context: parent, checked: make(chan struct{})}
+			result := make(chan error, 1)
+			s.mu.Lock()
+			go func() {
+				if method == "Set" {
+					result <- s.Set(ctx, "KEY", "public-replacement")
+				} else {
+					result <- s.Delete(ctx, "KEY")
+				}
+			}()
+			<-ctx.checked
+			cancel()
+			s.mu.Unlock()
+			select {
+			case err := <-result:
+				if !errors.Is(err, context.Canceled) {
+					t.Fatal("queued mutation ignored cancellation")
+				}
+			case <-time.After(time.Second):
+				t.Fatal("queued mutation did not finish")
+			}
+			if value, err := s.Get(context.Background(), "KEY"); err != nil || value != "public-initial" {
+				t.Fatal("canceled mutation changed fixture state")
+			}
+		})
+	}
 }

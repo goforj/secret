@@ -12,7 +12,7 @@ require (
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.23.3
 	github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azsecrets v1.5.1
-	github.com/goforj/secret v0.0.0
+	github.com/goforj/secret v0.1.0
 )
 
 replace github.com/goforj/secret => ../..

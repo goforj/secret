@@ -23,7 +23,7 @@ require (
 )
 
 require (
-	github.com/goforj/secret v0.0.0
+	github.com/goforj/secret v0.1.0
 	github.com/hashicorp/vault/api v1.23.0
 )
 

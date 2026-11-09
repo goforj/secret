@@ -23,6 +23,8 @@ Run `make generate`, then `make check-generated`. The latter snapshots the READM
 
 Unit and integration evidence remain separate. `docs/reports/unit.json` records exact counts and executed test cases; `docs/reports/integration.json` records the complete provider run. Local protocol tests do not substitute for hosted verification.
 
+Use a current patched Go toolchain for release and security checks. Module Go directives describe compilation minimums, not a guarantee that an old compiler's standard library is free of advisories. The [release review](review.md) records the toolchain, comparisons, and verification boundaries for this candidate.
+
 ## Integration services
 
 Testcontainers owns one service per provider for the package run. The harness registers containers before starting them, uses isolated resources, and tears down every container even after setup or assertion failures. Image digests are pinned in the test source. Fixture credentials are public emulator tokens; developer cloud credentials are never loaded.
@@ -50,7 +52,7 @@ Runtime modules have independent tags:
 
 `examples`, `docs`, and `integration` are untagged tooling modules. Relative replacements are intentional for repository development. `GOWORK=off` alone does not disable them.
 
-`make release-plan VERSION=v0.1.0` prints the intended tags without creating them. Before a release, align nested root requirements with the intended published root version. Run `make release-check VERSION=v0.1.0` only from a clean committed candidate. The current unreleased dependency placeholder is v0.0.0, so use that version for an archive rehearsal of the initial checkout.
+`make release-plan VERSION=v0.1.0` prints the intended tags without creating them. Before a release, align nested root requirements with the intended published root version. Run `make release-check VERSION=v0.1.0` only from a clean committed candidate. The initial candidate is v0.1.0, and every sibling requirement is aligned to that version. The default VERSION matches it. For subsequent releases, update all applicable runtime, example, and integration requirements together while retaining the development replacements.
 
 The archive verifier packages committed files, excludes nested module boundaries, and serves exact candidate zip, mod, and info files through a private temporary file proxy. Each consumer has no replace directives and uses a fresh temporary module cache. It compiles exported capabilities, executes consumer contract checks, runs `go mod verify`, and rejects replacements, checkout resolution, or unexpected root/module versions. External dependency checksum verification remains enabled.
 

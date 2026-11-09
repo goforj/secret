@@ -42,6 +42,9 @@ func (s *store) Set(ctx context.Context, name, value string) error {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	s.values[name] = value
 	return nil
 }
@@ -53,6 +56,9 @@ func (s *store) Delete(ctx context.Context, name string) error {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	delete(s.values, name)
 	return nil
 }

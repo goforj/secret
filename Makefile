@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-VERSION ?= v0.0.0
+VERSION ?= v0.1.0
 
 .PHONY: help test test-race vet tidy modules-check test-integration test-coverage generate check-generated security release-plan release-check release-published
 

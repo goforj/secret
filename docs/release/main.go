@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -44,10 +45,10 @@ func main() {
 // run validates consumers through a private preview proxy with no local replacements.
 func run() error {
 	mode := flag.String("mode", "plan", "plan, archive, or published")
-	version := flag.String("version", "v0.0.0", "exact candidate or published version")
+	version := flag.String("version", "v0.1.0", "exact candidate or published version")
 	flag.Parse()
-	if !strings.HasPrefix(*version, "v") || strings.ContainsAny(*version, "/\\\n\r") {
-		return fmt.Errorf("invalid version")
+	if !validVersion(*version) {
+		return fmt.Errorf("version must be a canonical v0 or v1 semantic version without build metadata")
 	}
 	root, err := filepath.Abs("..")
 	if err != nil {
@@ -229,6 +230,20 @@ func run() error {
 		}
 	}
 	return nil
+}
+
+// validVersion prevents unusable tags and incompatible major versions for the current module paths.
+func validVersion(version string) bool {
+	if !regexp.MustCompile(`^v[01]\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$`).MatchString(version) {
+		return false
+	}
+	_, prerelease, _ := strings.Cut(version, "-")
+	for _, part := range strings.Split(prerelease, ".") {
+		if len(part) > 1 && part[0] == '0' && strings.Trim(part, "0123456789") == "" {
+			return false
+		}
+	}
+	return true
 }
 
 // command confines child authentication, proxy, and module settings to the verification process.
