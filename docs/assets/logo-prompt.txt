@@ -1,0 +1,5 @@
+Generated with the built-in image generation tool on 2026-11-09.
+Style references: original GoForj search and notification README logos.
+Output: docs/assets/logo.png, transparent PNG, original secret composition.
+
+Create an original GoForj standalone Go library sticker logo for the library named exactly 'secret'. Match the sibling logos' blue Go gopher, huge white eyes, cream muzzle and paws, thick dark navy outlines, complete white sticker silhouette border, rounded lowercase bold white wordmark outlined in dark navy. Original composition: a friendly blue gopher hugging a small dark navy safe with a golden keyhole and holding a golden key. Wordmark 'secret' large and fully legible below. Actual transparent canvas, no background matte, no decorative text or extra letters. Keep the whole silhouette and white border inside the canvas. Clean polished vector-like cartoon raster artwork, readable at 300px wide.

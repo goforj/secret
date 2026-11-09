@@ -1,0 +1,99 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: stable
+          cache-dependency-path: '**/go.sum'
+      - name: Check formatting, inventory, and tidy parity
+        run: |
+          test -z "$(gofmt -l .)"
+          make modules-check
+          make tidy
+          git diff --exit-code -- '**/go.mod' '**/go.sum' go.mod go.sum
+      - name: Test every module, canonical programs, and race behavior
+        run: |
+          make test
+          make test-race
+          make vet
+          make test-coverage
+      - name: Verify generated documentation
+        run: |
+          make check-generated
+          git diff --exit-code -- README.md docs/assets/badges
+      - name: Upload separate unit coverage when configured
+        if: vars.CODECOV_ENABLED == 'true'
+        uses: codecov/codecov-action@e53489f4d376d79066609109e7a95a29eb3740b1 # v7.0.0
+        with:
+          files: .artifacts/unit-coverage.out
+          disable_search: true
+          flags: unit
+          fail_ci_if_error: true
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  minimum-core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version: '1.24.4'
+          cache-dependency-path: '**/go.sum'
+      - name: Verify core and SDK modules at their declared minimum
+        env:
+          GOTOOLCHAIN: local
+        run: |
+          for module in . secrettest driver/awssecret; do
+            go -C "$module" test ./...
+          done
+
+  files:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        go: ['1.25.12', '1.26.5', stable]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version: ${{ matrix.go }}
+          cache-dependency-path: '**/go.sum'
+      - name: Verify patched confinement, projected volumes, and FIFO behavior
+        env:
+          GOTOOLCHAIN: local
+        run: go -C driver/filesecret test -race ./...
+
+  windows-files:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version: stable
+      - run: go -C driver/filesecret test -race ./...
+
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version: stable
+          cache-dependency-path: '**/go.sum'
+      - name: Verify real SDKs and disposable pinned services
+        run: make test-integration

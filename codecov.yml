@@ -1,0 +1,15 @@
+coverage:
+  status:
+    project:
+      unit:
+        target: 100%
+        threshold: 0%
+        flags: [unit]
+    patch:
+      unit:
+        target: 100%
+        threshold: 0%
+        flags: [unit]
+flags:
+  unit:
+    carryforward: false

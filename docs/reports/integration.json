@@ -1,0 +1,16 @@
+{
+  "source": "34f3704865975c9621df8d8c5853bcd271027e768b3a85c2b9f796fb8d1eb8ac",
+  "tests": 10,
+  "cases": [
+    "TestAWS",
+    "TestAWS/1",
+    "TestAWS/2",
+    "TestAzure",
+    "TestGoogle",
+    "TestGoogleREST",
+    "TestVault",
+    "TestVault/active",
+    "TestVault/shared",
+    "TestVault/soft-deleted"
+  ]
+}
