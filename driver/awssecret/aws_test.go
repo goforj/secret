@@ -357,3 +357,57 @@ func TestMutationCanceledBeforeGate(t *testing.T) {
 	expect(t, s.Set(&stagedContext{Context: context.Background()}, "KEY", "x"), context.Canceled)
 	expect(t, s.Delete(&stagedContext{Context: context.Background()}, "KEY"), context.Canceled)
 }
+
+// TestRequestOwnership prevents client middleware from changing retained binding policy.
+func TestRequestOwnership(t *testing.T) {
+	s, c := fixture(t)
+	check := func(id *string) {
+		if id == nil || *id != testARN {
+			t.Fatal("request no longer targets the configured resource")
+		}
+		*id = "changed-by-client"
+	}
+	c.get = func(_ context.Context, in *secretsmanager.GetSecretValueInput) (*secretsmanager.GetSecretValueOutput, error) {
+		check(in.SecretId)
+		return &secretsmanager.GetSecretValueOutput{SecretString: ptr("public-fixture")}, nil
+	}
+	c.describe = func(_ context.Context, in *secretsmanager.DescribeSecretInput) (*secretsmanager.DescribeSecretOutput, error) {
+		check(in.SecretId)
+		return &secretsmanager.DescribeSecretOutput{}, nil
+	}
+	c.put = func(_ context.Context, in *secretsmanager.PutSecretValueInput) (*secretsmanager.PutSecretValueOutput, error) {
+		check(in.SecretId)
+		return &secretsmanager.PutSecretValueOutput{}, nil
+	}
+	c.delete = func(_ context.Context, in *secretsmanager.DeleteSecretInput) (*secretsmanager.DeleteSecretOutput, error) {
+		check(in.SecretId)
+		return &secretsmanager.DeleteSecretOutput{}, nil
+	}
+	ctx := context.Background()
+	if _, err := s.Get(ctx, "KEY"); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Set(ctx, "KEY", "public-replacement"); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Delete(ctx, "KEY"); err != nil {
+		t.Fatal(err)
+	}
+	if s.bindings["KEY"].ARN != testARN {
+		t.Fatal("client changed retained binding")
+	}
+}
+
+// TestReconciliationTokenOwnership refuses to use a client-mutated request token as commit evidence.
+func TestReconciliationTokenOwnership(t *testing.T) {
+	s, c := fixture(t)
+	s.token = func() (string, error) { return "stable-token", nil }
+	c.describe = func(_ context.Context, in *secretsmanager.DescribeSecretInput) (*secretsmanager.DescribeSecretOutput, error) {
+		return &secretsmanager.DescribeSecretOutput{VersionIdsToStages: map[string][]string{"changed-token": nil}}, nil
+	}
+	c.put = func(_ context.Context, in *secretsmanager.PutSecretValueInput) (*secretsmanager.PutSecretValueOutput, error) {
+		*in.ClientRequestToken = "changed-token"
+		return nil, apiError("InvalidRequestException")
+	}
+	expect(t, s.Set(context.Background(), "KEY", "public-replacement"), secret.ErrIndeterminate)
+}

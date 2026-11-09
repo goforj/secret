@@ -36,7 +36,7 @@ The candidate was checked on macOS arm64 using Go 1.27.3:
 
 - All ten modules are inventoried and tidied, with no third-party dependency or checksum changes.
 - All-module tests, race tests, and vet pass, including the child example programs and the new uncertain-write example.
-- Runtime unit evidence records 81 executed cases and 616 of 616 statements covered. Integration evidence is separate.
+- Runtime unit evidence records 83 executed cases and 617 of 617 statements covered. Integration evidence is separate.
 - Ten integration cases pass using the real SDKs against pinned AWS, Google gRPC/REST, and Azure emulators and a real Vault server.
 - govulncheck v1.9.0 reports no vulnerabilities in any of the ten modules with Go 1.27.3. An initial scan using the machine's Go 1.27.0 reported standard-library advisory GO-2026-6613; the system Go installation was not changed.
 - README generation is repeatable, and two further generations leave the README and badges unchanged.
@@ -45,6 +45,24 @@ Candidate archive verification uses the repository's release tool from a clean c
 
 ## Publication boundaries
 
-Hosted AWS, Google, and Azure accounts have not been exercised. Emulator tests do not establish hosted IAM, KMS, regional policy, or retention behavior. Linux and Windows confinement remain covered by the existing CI matrix; this local pass ran the actual macOS descriptor and symlink tests.
+Hosted AWS, Google, and Azure accounts have not been exercised. Emulator tests do not establish hosted IAM, KMS, regional policy, or retention behavior. The follow-up also ran the descriptor and symlink suite with the race detector on Linux arm64 (Go 1.27.2) and macOS arm64 at the file module's Go 1.25.12 minimum. Windows execution remains covered by the existing CI matrix; a local Windows cross-compilation is not a substitute for executing that suite.
 
 The library remains unreleased. Publish the tested root first, verify it, then publish and verify each independently tagged runtime module. Any candidate changes require a new archive check. The published-module verifier must run through the public proxy after authorized publication; a private candidate proxy is not publication evidence.
+
+## Follow-up release review
+
+A second round on 2026-11-09 reviewed runtime request ownership, the release trust boundary, and final candidate packaging. It found and addressed these additional issues:
+
+| Finding | Resolution and regression evidence |
+| --- | --- |
+| AWS SDK inputs referenced the retained binding ARN directly. A client mutating that input could redirect later operations. | Each SDK request receives a fresh pointer to its resource ID. A test mutates every request and checks that subsequent operations still target the original binding. It failed before the fix. |
+| A client could mutate the AWS input's request-token pointer, causing reconciliation to accept a different version as proof of this write. | The request receives a copy of the token. A regression simulates the mutation and now requires ErrIndeterminate instead of false success. It failed before the fix. |
+| Archive generation repeatedly read HEAD and used working-tree files to identify module boundaries and Go minimums. | Source, module declarations, module boundaries, inherited licenses, and timestamps now come from a single captured commit. A fixture advances HEAD and adds an uncommitted module boundary while verifying the original snapshot. NUL-delimited tree enumeration also preserves Unicode filenames. |
+| Publication verification trusted local tags, which can diverge from origin. | The verifier queries origin and resolves lightweight and annotated tags. A local bare-origin regression moves the local tag and proves the verifier still reads the remote commit. No hosted repository is mutated by this test. |
+| There was no root-only verification step for root-first publication. | `release-published MODULE=.` verifies the root, and an explicit runtime module directory verifies a later individual publication. Archive checks always retain the complete module set. |
+| Archive verification inherited a disabled checksum database from the caller. | The verifier forces the public checksum database on for external dependencies. A test runs the actual Go command with conflicting caller settings and checks the resulting environment. |
+| Independent consumers did not exercise all SDK dependency graphs together. | Full archive and publication verification now also build one consumer importing all seven runtime modules, verify its module graph, and reject checkout resolution or unexpected versions. |
+
+These changes retain the public library interfaces, driver construction, stored data, provider configuration, and minimum Go versions. They improve ownership of request data and release verification without adding runtime dependencies. The AWS request ownership, token reconciliation, and mutation serialization regressions are additionally stressed under the race detector.
+
+The local release candidate remains unpublished. Final archive evidence must match the latest committed candidate, including the combined consumer check. Root-first and per-module public verification commands are available for use after each authorized publication. Hosted account checks and actual Windows execution remain outside this local pass.

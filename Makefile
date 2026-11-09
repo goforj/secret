@@ -1,5 +1,6 @@
 .DEFAULT_GOAL := help
 VERSION ?= v0.1.0
+MODULE ?= all
 
 .PHONY: help test test-race vet tidy modules-check test-integration test-coverage generate check-generated security release-plan release-check release-published
 
@@ -43,4 +44,4 @@ release-check: ## Verify exact committed candidate archives in isolated consumer
 	@GOWORK=off go -C docs run ./release -mode archive -version $(VERSION)
 
 release-published: ## Verify published modules through the public proxy and checksums.
-	@GOWORK=off go -C docs run ./release -mode published -version $(VERSION)
+	@GOWORK=off go -C docs run ./release -mode published -version $(VERSION) -module $(MODULE)

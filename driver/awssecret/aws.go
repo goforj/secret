@@ -74,6 +74,9 @@ func New(client Client, bindings map[string]Binding) (*Store, error) {
 	return &Store{client: client, bindings: copy, token: newToken}, nil
 }
 
+// stringPointer gives each SDK request its own copy of retained policy and reconciliation tokens.
+func stringPointer(value string) *string { return &value }
+
 // newToken creates one UUID per public Set, stable across SDK retry attempts.
 func newToken() (string, error) {
 	var data [16]byte
@@ -115,7 +118,7 @@ func (s *Store) Get(ctx context.Context, name string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	result, err := s.client.GetSecretValue(ctx, &secretsmanager.GetSecretValueInput{SecretId: &b.ARN})
+	result, err := s.client.GetSecretValue(ctx, &secretsmanager.GetSecretValueInput{SecretId: stringPointer(b.ARN)})
 	if err != nil {
 		return "", readError(ctx, err, true)
 	}
@@ -153,7 +156,7 @@ func (s *Store) Set(ctx context.Context, name, value string) error {
 	if err != nil {
 		return failure(ctx, secret.ErrUnavailable)
 	}
-	state, err := s.client.DescribeSecret(ctx, &secretsmanager.DescribeSecretInput{SecretId: &b.ARN})
+	state, err := s.client.DescribeSecret(ctx, &secretsmanager.DescribeSecretInput{SecretId: stringPointer(b.ARN)})
 	if err != nil {
 		return readError(ctx, err, false)
 	}
@@ -166,7 +169,7 @@ func (s *Store) Set(ctx context.Context, name, value string) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	input := &secretsmanager.PutSecretValueInput{SecretId: &b.ARN, ClientRequestToken: &token}
+	input := &secretsmanager.PutSecretValueInput{SecretId: stringPointer(b.ARN), ClientRequestToken: stringPointer(token)}
 	if b.Encoding == Text {
 		input.SecretString = &value
 	} else {
@@ -180,7 +183,7 @@ func (s *Store) Set(ctx context.Context, name, value string) error {
 		return failure(ctx, secret.ErrNotFound)
 	}
 	if code(err) == "InvalidRequestException" {
-		state, check := s.client.DescribeSecret(ctx, &secretsmanager.DescribeSecretInput{SecretId: &b.ARN})
+		state, check := s.client.DescribeSecret(ctx, &secretsmanager.DescribeSecretInput{SecretId: stringPointer(b.ARN)})
 		if check == nil && state != nil {
 			if _, committed := state.VersionIdsToStages[token]; committed {
 				return nil
@@ -200,7 +203,7 @@ func (s *Store) Delete(ctx context.Context, name string) error {
 		return err
 	}
 	defer func() { <-b.gate }()
-	state, err := s.client.DescribeSecret(ctx, &secretsmanager.DescribeSecretInput{SecretId: &b.ARN})
+	state, err := s.client.DescribeSecret(ctx, &secretsmanager.DescribeSecretInput{SecretId: stringPointer(b.ARN)})
 	if err != nil {
 		mapped := readError(ctx, err, false)
 		if errors.Is(mapped, secret.ErrNotFound) {
@@ -217,12 +220,12 @@ func (s *Store) Delete(ctx context.Context, name string) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	_, err = s.client.DeleteSecret(ctx, &secretsmanager.DeleteSecretInput{SecretId: &b.ARN})
+	_, err = s.client.DeleteSecret(ctx, &secretsmanager.DeleteSecretInput{SecretId: stringPointer(b.ARN)})
 	if err == nil || code(err) == "ResourceNotFoundException" {
 		return nil
 	}
 	if code(err) == "InvalidRequestException" {
-		state, check := s.client.DescribeSecret(ctx, &secretsmanager.DescribeSecretInput{SecretId: &b.ARN})
+		state, check := s.client.DescribeSecret(ctx, &secretsmanager.DescribeSecretInput{SecretId: stringPointer(b.ARN)})
 		if check == nil && state != nil && state.DeletedDate != nil {
 			return nil
 		}

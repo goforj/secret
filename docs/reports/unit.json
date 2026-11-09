@@ -1,8 +1,8 @@
 {
-  "source": "ce2c743eda7d9ab581a874e2687573222369f5a360eeee7e05c5d691f06e186e",
-  "tests": 81,
-  "covered": 616,
-  "total": 616,
+  "source": "c63f75502b27995c0d5d55f8357184a04db825f8341c549350b9dc3aba4d7068",
+  "tests": 83,
+  "covered": 617,
+  "total": 617,
   "cases": [
     "TestConfinementDuringSymlinkSwaps",
     "TestConstructor",
@@ -46,8 +46,10 @@
     "TestMutationGate",
     "TestMutationSerialization",
     "TestProjectedVolumesAndEscape",
+    "TestReconciliationTokenOwnership",
     "TestRequestAndPreflightCancellation",
     "TestRequestContract",
+    "TestRequestOwnership",
     "TestSDKMissingTranslation",
     "TestSet",
     "TestStore",

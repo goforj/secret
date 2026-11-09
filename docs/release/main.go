@@ -3,11 +3,10 @@ package main
 
 import (
 	"archive/zip"
-	"bytes"
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io"
+	"go/version"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -45,27 +44,29 @@ func main() {
 // run validates consumers through a private preview proxy with no local replacements.
 func run() error {
 	mode := flag.String("mode", "plan", "plan, archive, or published")
-	version := flag.String("version", "v0.1.0", "exact candidate or published version")
+	releaseVersion := flag.String("version", "v0.1.0", "exact candidate or published version")
+	selector := flag.String("module", "all", "published module directory, . for the root, or all")
 	flag.Parse()
-	if !validVersion(*version) {
+	if !validVersion(*releaseVersion) {
 		return fmt.Errorf("version must be a canonical v0 or v1 semantic version without build metadata")
+	}
+	selected, err := releaseModules(*mode, *selector)
+	if err != nil {
+		return err
 	}
 	root, err := filepath.Abs("..")
 	if err != nil {
 		return err
 	}
 	if *mode == "plan" {
-		for _, m := range modules {
+		for _, m := range selected {
 			prefix := m.Path
 			if prefix != "" {
 				prefix += "/"
 			}
-			fmt.Println(prefix + *version)
+			fmt.Println(prefix + *releaseVersion)
 		}
 		return nil
-	}
-	if *mode != "archive" && *mode != "published" {
-		return fmt.Errorf("unknown release mode")
 	}
 	if *mode == "archive" {
 		status, err := command(root, nil, "git", "status", "--porcelain")
@@ -83,14 +84,15 @@ func run() error {
 
 	cache := filepath.Join(temporary, "cache")
 	proxy := filepath.Join(temporary, "proxy")
-	environment := append(os.Environ(), "GOWORK=off", "GOMODCACHE="+cache, "GOPRIVATE=", "GONOPROXY=none")
+	environment := candidateEnvironment(cache)
 	defer func() { command(temporary, environment, "go", "clean", "-modcache"); os.RemoveAll(temporary) }()
 	commit, err := command(root, nil, "git", "rev-parse", "HEAD")
 	if err != nil {
 		return err
 	}
-	evidence := archiveEvidence{Commit: strings.TrimSpace(string(commit)), Version: *version, Modules: map[string]checksums{}}
-	reportPath := filepath.Join(root, ".artifacts", "release-archive-"+*version+".json")
+	sourceCommit := strings.TrimSpace(string(commit))
+	evidence := archiveEvidence{Commit: sourceCommit, Version: *releaseVersion, Modules: map[string]checksums{}}
+	reportPath := filepath.Join(root, ".artifacts", "release-archive-"+*releaseVersion+".json")
 	var candidate archiveEvidence
 	if *mode == "published" {
 		data, err := os.ReadFile(reportPath)
@@ -100,22 +102,24 @@ func run() error {
 		if err := json.Unmarshal(data, &candidate); err != nil {
 			return err
 		}
-		if candidate.Version != *version {
-			return fmt.Errorf("candidate version mismatch")
+		if candidate.Commit == "" || candidate.Version != *releaseVersion {
+			return fmt.Errorf("candidate commit or version mismatch")
 		}
+		sourceCommit = candidate.Commit
 	}
 
 	if *mode == "archive" {
-		for _, m := range modules {
-			if err := archive(root, proxy, m, *version); err != nil {
+		for _, m := range selected {
+			if err := archive(root, proxy, m, *releaseVersion, sourceCommit); err != nil {
 				return err
 			}
 		}
-		environment = append(environment, "GOPROXY=file://"+filepath.ToSlash(proxy)+",https://proxy.golang.org", "GONOSUMDB=github.com/goforj/secret*")
+		environment = append(environment, "GOPROXY=file://"+filepath.ToSlash(proxy)+",https://proxy.golang.org", "GONOSUMDB=github.com/goforj/secret")
 	} else {
 		environment = append(environment, "GOPROXY=https://proxy.golang.org", "GOSUMDB=sum.golang.org", "GONOSUMDB=none")
 	}
-	for _, m := range modules {
+	compositionGo := "1.0"
+	for _, m := range selected {
 		name := "github.com/goforj/secret"
 		if m.Path != "" {
 			name += "/" + m.Path
@@ -124,7 +128,7 @@ func run() error {
 		if err := os.MkdirAll(directory, 0755); err != nil {
 			return err
 		}
-		configuration, err := os.ReadFile(filepath.Join(root, m.Path, "go.mod"))
+		configuration, err := command(root, nil, "git", "show", sourceCommit+":"+filepath.ToSlash(filepath.Join(m.Path, "go.mod")))
 		if err != nil {
 			return err
 		}
@@ -139,7 +143,10 @@ func run() error {
 			return fmt.Errorf("missing module Go minimum")
 		}
 
-		mod := fmt.Sprintf("module consumer\n\ngo %s\n\nrequire %s %s\n", goVersion, name, *version)
+		if version.Compare("go"+goVersion, "go"+compositionGo) > 0 {
+			compositionGo = goVersion
+		}
+		mod := fmt.Sprintf("module consumer\n\ngo %s\n\nrequire %s %s\n", goVersion, name, *releaseVersion)
 		if err := os.WriteFile(filepath.Join(directory, "go.mod"), []byte(mod), 0600); err != nil {
 			return err
 		}
@@ -159,35 +166,11 @@ func run() error {
 		if err != nil {
 			return err
 		}
-		decoder := json.NewDecoder(bytes.NewReader(data))
-		found := false
-		foundRoot := m.Path == ""
-		for {
-			var selected struct {
-				Path, Version, Dir string
-				Replace            any
-			}
-			err := decoder.Decode(&selected)
-			if err == io.EOF {
-				break
-			}
-			if err != nil {
-				return err
-			}
-			if selected.Replace != nil || selected.Dir == root || strings.HasPrefix(selected.Dir, root+string(filepath.Separator)) {
-				return fmt.Errorf("consumer resolved a local replacement")
-			}
-			if selected.Path == name {
-				found = selected.Version == *version
-			}
-			if selected.Path == "github.com/goforj/secret" {
-				foundRoot = selected.Version == *version
-			}
+		expected := map[string]string{name: *releaseVersion, "github.com/goforj/secret": *releaseVersion}
+		if err := verifyGraph(data, root, expected); err != nil {
+			return fmt.Errorf("%s: %w", name, err)
 		}
-		if !found || !foundRoot {
-			return fmt.Errorf("unexpected selected module version for %s", name)
-		}
-		download, err := command(directory, environment, "go", "mod", "download", "-json", name+"@"+*version)
+		download, err := command(directory, environment, "go", "mod", "download", "-json", name+"@"+*releaseVersion)
 		if err != nil {
 			return err
 		}
@@ -203,19 +186,24 @@ func run() error {
 			if candidate.Modules[name] != sums {
 				return fmt.Errorf("published archive differs from tested candidate for %s", name)
 			}
-			tag := *version
+			tag := *releaseVersion
 			if m.Path != "" {
 				tag = m.Path + "/" + tag
 			}
-			target, err := command(root, nil, "git", "rev-parse", tag+"^{commit}")
+			target, err := remoteTagCommit(root, tag)
 			if err != nil {
 				return err
 			}
-			if strings.TrimSpace(string(target)) != candidate.Commit {
-				return fmt.Errorf("tag does not target the tested candidate")
+			if target != candidate.Commit {
+				return fmt.Errorf("remote tag %s does not target the tested candidate", tag)
 			}
 		}
-		fmt.Printf("verified %s@%s (%s)\n", name, *version, *mode)
+		fmt.Printf("verified %s@%s (%s)\n", name, *releaseVersion, *mode)
+	}
+	if len(selected) == len(modules) {
+		if err := verifyComposition(temporary, environment, *releaseVersion, compositionGo, root); err != nil {
+			return err
+		}
 	}
 	if *mode == "archive" {
 		data, err := json.MarshalIndent(evidence, "", "  ")
@@ -261,7 +249,7 @@ func command(directory string, environment []string, name string, args ...string
 }
 
 // archive uses committed bytes and excludes nested modules, matching Go's module boundaries.
-func archive(root, proxy string, m module, version string) error {
+func archive(root, proxy string, m module, version, commit string) error {
 	name := "github.com/goforj/secret"
 	if m.Path != "" {
 		name += "/" + m.Path
@@ -270,11 +258,15 @@ func archive(root, proxy string, m module, version string) error {
 	if err := os.MkdirAll(directory, 0755); err != nil {
 		return err
 	}
-	listing, err := command(root, nil, "git", "ls-tree", "-r", "--name-only", "HEAD")
+	listing, err := command(root, nil, "git", "ls-tree", "-r", "-z", "--name-only", commit)
 	if err != nil {
 		return err
 	}
-	paths := strings.Split(strings.TrimSpace(string(listing)), "\n")
+	paths := strings.Split(strings.TrimSuffix(string(listing), "\x00"), "\x00")
+	committed := make(map[string]bool, len(paths))
+	for _, path := range paths {
+		committed[path] = true
+	}
 	prefix := m.Path
 	if prefix != "" {
 		prefix += "/"
@@ -283,6 +275,7 @@ func archive(root, proxy string, m module, version string) error {
 	if err != nil {
 		return err
 	}
+	defer file.Close()
 	writer := zip.NewWriter(file)
 	for _, path := range paths {
 		if !strings.HasPrefix(path, prefix) {
@@ -292,7 +285,7 @@ func archive(root, proxy string, m module, version string) error {
 		nested := false
 		parent := filepath.Dir(relative)
 		for parent != "." {
-			if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(prefix), parent, "go.mod")); err == nil {
+			if committed[prefix+filepath.ToSlash(filepath.Join(parent, "go.mod"))] {
 				nested = true
 				break
 			}
@@ -301,7 +294,7 @@ func archive(root, proxy string, m module, version string) error {
 		if nested {
 			continue
 		}
-		data, err := command(root, nil, "git", "show", "HEAD:"+path)
+		data, err := command(root, nil, "git", "show", commit+":"+path)
 		if err != nil {
 			return err
 		}
@@ -314,7 +307,7 @@ func archive(root, proxy string, m module, version string) error {
 		}
 	}
 	if m.Path != "" {
-		data, err := command(root, nil, "git", "show", "HEAD:LICENSE")
+		data, err := command(root, nil, "git", "show", commit+":LICENSE")
 		if err != nil {
 			return err
 		}
@@ -333,14 +326,14 @@ func archive(root, proxy string, m module, version string) error {
 		return err
 	}
 	modPath := prefix + "go.mod"
-	data, err := command(root, nil, "git", "show", "HEAD:"+modPath)
+	data, err := command(root, nil, "git", "show", commit+":"+modPath)
 	if err != nil {
 		return err
 	}
 	if err := os.WriteFile(filepath.Join(directory, version+".mod"), data, 0644); err != nil {
 		return err
 	}
-	stamp, err := command(root, nil, "git", "show", "-s", "--format=%cI", "HEAD")
+	stamp, err := command(root, nil, "git", "show", "-s", "--format=%cI", commit)
 	if err != nil {
 		return err
 	}
