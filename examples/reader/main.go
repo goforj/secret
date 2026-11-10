@@ -18,12 +18,17 @@ func main() {
 		return "public-example-password", nil
 	})
 
-	_, err := reader.Get(context.Background(), "DATABASE_PASSWORD")
-	fmt.Println("loaded:", err == nil)
-	// Output: loaded: true
+	ctx := context.Background()
+	if _, err := reader.Get(ctx, "DATABASE_PASSWORD"); err != nil {
+		panic(err)
+	}
+	fmt.Println("credential loaded")
+	// Output: credential loaded
 
-	_, err = reader.Get(context.Background(), "UNKNOWN")
-	fmt.Println("missing:", errors.Is(err, secret.ErrNotFound))
-	// Output: missing: true
+	if _, err := reader.Get(ctx, "UNKNOWN"); !errors.Is(err, secret.ErrNotFound) {
+		panic("expected an unknown name to return ErrNotFound")
+	}
+	fmt.Println("unknown name rejected")
+	// Output: unknown name rejected
 	// snippet:end
 }

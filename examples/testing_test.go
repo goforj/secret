@@ -20,21 +20,19 @@ func TestStore(t *testing.T) {
 	if err := store.Set(ctx, "DATABASE_PASSWORD", "public-replacement"); err != nil {
 		t.Fatal(err)
 	}
-	_, err := store.Get(ctx, "DATABASE_PASSWORD")
-	if err != nil {
+	if _, err := store.Get(ctx, "DATABASE_PASSWORD"); err != nil {
 		t.Fatal(err)
 	}
-	fmt.Println("replacement readable:", err == nil)
-	// Output: replacement readable: true
+	fmt.Println("replacement readable")
+	// Output: replacement readable
 
 	if err := store.Delete(ctx, "DATABASE_PASSWORD"); err != nil {
 		t.Fatal(err)
 	}
-	_, err = store.Get(ctx, "DATABASE_PASSWORD")
-	if !errors.Is(err, secret.ErrNotFound) {
+	if _, err := store.Get(ctx, "DATABASE_PASSWORD"); !errors.Is(err, secret.ErrNotFound) {
 		t.Fatal("deleted fixture remains readable")
 	}
-	fmt.Println("removed:", errors.Is(err, secret.ErrNotFound))
-	// Output: removed: true
+	fmt.Println("removed")
+	// Output: removed
 	// snippet:end
 }

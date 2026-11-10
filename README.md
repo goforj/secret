@@ -395,13 +395,18 @@ reader := secret.Func(func(ctx context.Context, name string) (string, error) {
 	return "public-example-password", nil
 })
 
-_, err := reader.Get(context.Background(), "DATABASE_PASSWORD")
-fmt.Println("loaded:", err == nil)
-// Output: loaded: true
+ctx := context.Background()
+if _, err := reader.Get(ctx, "DATABASE_PASSWORD"); err != nil {
+	panic(err)
+}
+fmt.Println("credential loaded")
+// Output: credential loaded
 
-_, err = reader.Get(context.Background(), "UNKNOWN")
-fmt.Println("missing:", errors.Is(err, secret.ErrNotFound))
-// Output: missing: true
+if _, err := reader.Get(ctx, "UNKNOWN"); !errors.Is(err, secret.ErrNotFound) {
+	panic("expected an unknown name to return ErrNotFound")
+}
+fmt.Println("unknown name rejected")
+// Output: unknown name rejected
 ```
 
 <a id="mutation-errors"></a>
@@ -438,22 +443,20 @@ ctx := context.Background()
 if err := store.Set(ctx, "DATABASE_PASSWORD", "public-replacement"); err != nil {
 	t.Fatal(err)
 }
-_, err := store.Get(ctx, "DATABASE_PASSWORD")
-if err != nil {
+if _, err := store.Get(ctx, "DATABASE_PASSWORD"); err != nil {
 	t.Fatal(err)
 }
-fmt.Println("replacement readable:", err == nil)
-// Output: replacement readable: true
+fmt.Println("replacement readable")
+// Output: replacement readable
 
 if err := store.Delete(ctx, "DATABASE_PASSWORD"); err != nil {
 	t.Fatal(err)
 }
-_, err = store.Get(ctx, "DATABASE_PASSWORD")
-if !errors.Is(err, secret.ErrNotFound) {
+if _, err := store.Get(ctx, "DATABASE_PASSWORD"); !errors.Is(err, secret.ErrNotFound) {
 	t.Fatal("deleted fixture remains readable")
 }
-fmt.Println("removed:", errors.Is(err, secret.ErrNotFound))
-// Output: removed: true
+fmt.Println("removed")
+// Output: removed
 ```
 
 
