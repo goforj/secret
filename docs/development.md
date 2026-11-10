@@ -8,6 +8,8 @@ Canonical offline programs live directly under `examples/*/`. Their output expec
 
 Managed provider programs live under `examples/providers/`. Normal module tests compile them without accessing credentials or services. Run them explicitly with your provider's authentication and existing resources, using the commands in the README. Hosted output remains unverified. The examples module requires Go 1.26 to compile all managed drivers; it does not change the library modules' minimum Go versions.
 
+Azure and Vault require Go 1.26 through their pinned `golang.org/x/net v0.62.0` dependency. Google's pinned SDK stack also requires Go 1.26. These constraints do not affect the core, test support, or AWS driver. The file driver requires Go 1.25.12+, Go 1.26.5+, or stable Go 1.27+ for the patched `os.Root` implementation.
+
 The README is generated from `docs/readme/README.md.tmpl`, curated API metadata, and executable example snippets. SVG badges are generated in Go. Feature and driver names remain real text for browser search; icons use distinct filenames and sit outside name links.
 
 Run `make generate`, then `make check-generated`. The latter snapshots the README and assets and compares two generations against them. Reports bind test outcomes to relevant source fingerprints. Stale coverage or integration evidence fails generation.

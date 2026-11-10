@@ -177,7 +177,7 @@ func Presentation(root string) (string, string, error) {
 		{"simple", "Small capabilities", "Read, replace, or delete with ordinary strings.", `<path d="M3 4h10M3 8h10M3 12h6"/>`},
 		{"bindings", "Explicit bindings", "Choose provider locations once during construction.", `<circle cx="4" cy="4" r="2"/><circle cx="12" cy="12" r="2"/><path d="m5 5 6 6M11 4h3M12 3v3"/>`},
 		{"bytes", "Exact values", "Preserve bytes within each provider's documented limits.", `<path d="m5 3-4 5 4 5m6-10 4 5-4 5M9 2 7 14"/>`},
-		{"errors", "Safe failures", "Classify failures without exposing provider data.", `<path d="m8 1 6 2v5c0 3-3 5-6 7-3-2-6-4-6-7V3z"/><path d="m5 8 2 2 4-4"/>`},
+		{"errors", "Safe failures", "Classify driver failures without exposing provider errors.", `<path d="m8 1 6 2v5c0 3-3 5-6 7-3-2-6-4-6-7V3z"/><path d="m5 8 2 2 4-4"/>`},
 		{"mutations", "Deliberate mutations", "Serialize same-secret writes and report uncertain outcomes.", `<path d="M3 5h10m-3-3 3 3-3 3M13 11H3m3-3-3 3 3 3"/>`},
 		{"testing", "Isolated testing", "Use a concurrency-safe store for application fixtures.", `<rect x="2" y="2" width="12" height="12" rx="2"/><path d="m5 8 2 2 4-4"/>`},
 	}
@@ -188,7 +188,7 @@ func Presentation(root string) (string, string, error) {
 		if err := write(root, asset, icon(feature.name, feature.path)); err != nil {
 			return "", "", err
 		}
-		fmt.Fprintf(&featureTable, "<tr><td width=\"240\" nowrap><img src=\"%s\" width=\"22\" height=\"22\" alt=\"\" align=\"absmiddle\"> <strong>%s</strong></td><td>%s</td></tr>\n", asset, feature.name, html.EscapeString(feature.body))
+		fmt.Fprintf(&featureTable, "<tr><td><img src=\"%s\" width=\"22\" height=\"22\" alt=\"\" align=\"absmiddle\"> <strong>%s</strong></td><td>%s</td></tr>\n", asset, feature.name, html.EscapeString(feature.body))
 	}
 	featureTable.WriteString("</tbody>\n</table>\n")
 	drivers := []struct{ id, label, module, capability, verification string }{
@@ -220,7 +220,7 @@ func Presentation(root string) (string, string, error) {
 		if err := write(root, asset, artwork); err != nil {
 			return "", "", err
 		}
-		fmt.Fprintf(&driverTable, "<tr><td width=\"260\" nowrap><img src=\"%s\" width=\"22\" height=\"22\" alt=\"\" align=\"absmiddle\"> <a href=\"driver/%s\"><strong>%s</strong></a></td><td>%s</td><td>%s</td></tr>\n", asset, driver.module, driver.label, html.EscapeString(driver.capability), driver.verification)
+		fmt.Fprintf(&driverTable, "<tr><td><img src=\"%s\" width=\"22\" height=\"22\" alt=\"\" align=\"absmiddle\"> <a href=\"driver/%s\"><strong>%s</strong></a></td><td>%s</td><td>%s</td></tr>\n", asset, driver.module, driver.label, html.EscapeString(driver.capability), driver.verification)
 	}
 	driverTable.WriteString("</tbody>\n</table>\n")
 	return featureTable.String(), driverTable.String(), nil

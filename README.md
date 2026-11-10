@@ -13,20 +13,24 @@
 </p>
 
 <p align="center">
-  <a href="#features">Features</a> · <a href="#quick-start">Quick Start</a> · <a href="#drivers">Drivers</a> · <a href="#installation">Installation</a> · <a href="#runnable-examples">Examples</a> · <a href="#api-index">API</a>
+  <a href="#features">Features</a> · <a href="#quick-start">Quick Start</a> · <a href="#drivers">Drivers</a> · <a href="#installation">Installation</a> · <a href="#how-it-works">How it works</a> · <a href="#runnable-examples">Examples</a> · <a href="#api-index">API</a>
 </p>
+
+Bind names such as `DATABASE_PASSWORD` to mounted files, AWS Secrets Manager, Google Secret Manager, Azure Key Vault, or Vault KV v2. Application code reads by name through `secret.Reader`; provider SDKs and resource locations stay in setup code.
+
+Managed drivers also support replacing and deleting existing secrets. You own provisioning, authentication, and access policies.
 
 ## Features
 
 <table>
 <thead><tr><th align="left">Feature</th><th align="left">What you get</th></tr></thead>
 <tbody>
-<tr><td width="240" nowrap><img src="docs/assets/badges/feature-icon-simple.svg" width="22" height="22" alt="" align="absmiddle"> <strong>Small capabilities</strong></td><td>Read, replace, or delete with ordinary strings.</td></tr>
-<tr><td width="240" nowrap><img src="docs/assets/badges/feature-icon-bindings.svg" width="22" height="22" alt="" align="absmiddle"> <strong>Explicit bindings</strong></td><td>Choose provider locations once during construction.</td></tr>
-<tr><td width="240" nowrap><img src="docs/assets/badges/feature-icon-bytes.svg" width="22" height="22" alt="" align="absmiddle"> <strong>Exact values</strong></td><td>Preserve bytes within each provider&#39;s documented limits.</td></tr>
-<tr><td width="240" nowrap><img src="docs/assets/badges/feature-icon-errors.svg" width="22" height="22" alt="" align="absmiddle"> <strong>Safe failures</strong></td><td>Classify failures without exposing provider data.</td></tr>
-<tr><td width="240" nowrap><img src="docs/assets/badges/feature-icon-mutations.svg" width="22" height="22" alt="" align="absmiddle"> <strong>Deliberate mutations</strong></td><td>Serialize same-secret writes and report uncertain outcomes.</td></tr>
-<tr><td width="240" nowrap><img src="docs/assets/badges/feature-icon-testing.svg" width="22" height="22" alt="" align="absmiddle"> <strong>Isolated testing</strong></td><td>Use a concurrency-safe store for application fixtures.</td></tr>
+<tr><td><img src="docs/assets/badges/feature-icon-simple.svg" width="22" height="22" alt="" align="absmiddle"> <strong>Small capabilities</strong></td><td>Read, replace, or delete with ordinary strings.</td></tr>
+<tr><td><img src="docs/assets/badges/feature-icon-bindings.svg" width="22" height="22" alt="" align="absmiddle"> <strong>Explicit bindings</strong></td><td>Choose provider locations once during construction.</td></tr>
+<tr><td><img src="docs/assets/badges/feature-icon-bytes.svg" width="22" height="22" alt="" align="absmiddle"> <strong>Exact values</strong></td><td>Preserve bytes within each provider&#39;s documented limits.</td></tr>
+<tr><td><img src="docs/assets/badges/feature-icon-errors.svg" width="22" height="22" alt="" align="absmiddle"> <strong>Safe failures</strong></td><td>Classify driver failures without exposing provider errors.</td></tr>
+<tr><td><img src="docs/assets/badges/feature-icon-mutations.svg" width="22" height="22" alt="" align="absmiddle"> <strong>Deliberate mutations</strong></td><td>Serialize same-secret writes and report uncertain outcomes.</td></tr>
+<tr><td><img src="docs/assets/badges/feature-icon-testing.svg" width="22" height="22" alt="" align="absmiddle"> <strong>Isolated testing</strong></td><td>Use a concurrency-safe store for application fixtures.</td></tr>
 </tbody>
 </table>
 
@@ -76,11 +80,11 @@ Application services can accept `secret.Reader`. Workflows that replace or delet
 <table>
 <thead><tr><th align="left">Driver</th><th align="left">Behavior</th><th align="left">Verification</th></tr></thead>
 <tbody>
-<tr><td width="260" nowrap><img src="docs/assets/badges/driver-icon-aws.svg" width="22" height="22" alt="" align="absmiddle"> <a href="driver/awssecret"><strong>AWS Secrets Manager</strong></a></td><td>Text or binary; standard recovery window</td><td>Moto 5.1.16 emulator</td></tr>
-<tr><td width="260" nowrap><img src="docs/assets/badges/driver-icon-azure.svg" width="22" height="22" alt="" align="absmiddle"> <a href="driver/azuresecret"><strong>Azure Key Vault</strong></a></td><td>UTF-8; vault-configured soft deletion</td><td>Lowkey Vault 7.4.0 emulator</td></tr>
-<tr><td width="260" nowrap><img src="docs/assets/badges/driver-icon-files.svg" width="22" height="22" alt="" align="absmiddle"> <a href="driver/filesecret"><strong>Mounted files</strong></a></td><td>Read exact bytes beneath a caller-owned root</td><td>Real filesystem and projected-volume tests</td></tr>
-<tr><td width="260" nowrap><img src="docs/assets/badges/driver-icon-google.svg" width="22" height="22" alt="" align="absmiddle"> <a href="driver/gcpsecret"><strong>Google Secret Manager</strong></a></td><td>Binary values, CRC32C, and ETag deletion</td><td>Google Secret Manager emulator (pinned image)</td></tr>
-<tr><td width="260" nowrap><img src="docs/assets/badges/driver-icon-vault.svg" width="22" height="22" alt="" align="absmiddle"> <a href="driver/vaultsecret"><strong>Vault KV v2</strong></a></td><td>Owned scalar paths; CAS and all-version deletion</td><td>Real Vault 1.21.4 server</td></tr>
+<tr><td><img src="docs/assets/badges/driver-icon-aws.svg" width="22" height="22" alt="" align="absmiddle"> <a href="driver/awssecret"><strong>AWS Secrets Manager</strong></a></td><td>Text or binary; standard recovery window</td><td>Moto 5.1.16 emulator</td></tr>
+<tr><td><img src="docs/assets/badges/driver-icon-azure.svg" width="22" height="22" alt="" align="absmiddle"> <a href="driver/azuresecret"><strong>Azure Key Vault</strong></a></td><td>UTF-8; vault-configured soft deletion</td><td>Lowkey Vault 7.4.0 emulator</td></tr>
+<tr><td><img src="docs/assets/badges/driver-icon-files.svg" width="22" height="22" alt="" align="absmiddle"> <a href="driver/filesecret"><strong>Mounted files</strong></a></td><td>Read exact bytes beneath a caller-owned root</td><td>Real filesystem and projected-volume tests</td></tr>
+<tr><td><img src="docs/assets/badges/driver-icon-google.svg" width="22" height="22" alt="" align="absmiddle"> <a href="driver/gcpsecret"><strong>Google Secret Manager</strong></a></td><td>Binary values, CRC32C, and ETag deletion</td><td>Google Secret Manager emulator (pinned image)</td></tr>
+<tr><td><img src="docs/assets/badges/driver-icon-vault.svg" width="22" height="22" alt="" align="absmiddle"> <a href="driver/vaultsecret"><strong>Vault KV v2</strong></a></td><td>Owned scalar paths; CAS and all-version deletion</td><td>Real Vault 1.21.4 server</td></tr>
 </tbody>
 </table>
 
@@ -89,7 +93,7 @@ Cloud verification uses the listed emulators and real provider SDKs. Hosted AWS,
 
 ## Installation
 
-The library is unreleased. Clone the repository to run every example against the local modules:
+The library is unreleased. To try it, clone the repository and use its local module replacements. The examples module requires Go 1.26; use Go 1.26.5+ in that branch or stable Go 1.27+ for the mounted-file example:
 
 ```sh
 git clone https://github.com/goforj/secret.git
@@ -110,9 +114,25 @@ The core has no external dependencies and requires Go 1.24.4. Optional modules i
 | github.com/goforj/secret/driver/gcpsecret | 1.26.0 | Google Secret Manager |
 | github.com/goforj/secret/driver/vaultsecret | 1.26.0 | Vault KV v2 |
 
-Azure and Vault pin golang.org/x/net v0.62.0 to fix known HTTP/2 vulnerabilities; that dependency requires Go 1.26. Google's pinned SDK stack also requires Go 1.26. These requirements do not affect the core, test support, or AWS driver. The file driver requires the patched `os.Root` implementation; Go 1.26.0 through 1.26.4 and prerelease toolchains are unsupported.
+Import only the capabilities and drivers your application needs. Provider SDK dependencies stay in their driver modules. The file driver requires a patched `os.Root` implementation; Go 1.26.0 through 1.26.4 and prerelease toolchains are unsupported. See [development and releases](docs/development.md) for dependency constraints and publication checks.
 
-Development replacements intentionally exercise unpublished sibling modules. Release tooling validates candidate archives through an isolated module proxy before any tags are created. See [development and releases](docs/development.md).
+## How it works
+
+- **Names and bindings.** Names follow `[A-Z][A-Z0-9_]*`, with a maximum of 255 bytes. Use application identifiers such as `DATABASE_PASSWORD`. Drivers copy bindings at construction, and unknown names never reach a provider.
+
+- **Exact values.** Values are ordinary strings. Reads preserve exact bytes within the provider's capabilities, without trimming, JSON parsing, environment fallback, caching, or rotation. Keep returned values out of logs and diagnostics.
+
+- **Writes and deletion.** Managed `Set` publishes a new current value at an existing resource. `Delete` targets the entire resource, including its versions, under the provider's retention policy. Vault deletion is irreversible. The file driver is read-only.
+
+- **Concurrency.** Each first-party managed store serializes mutations to the same binding. Different bindings and reads can proceed concurrently. Mutable resources require [exclusive lifecycle ownership](docs/drivers.md), including across separate store instances.
+
+- **Retries.** Provider SDK retries remain caller-owned except Google version creation, where the driver disables automatic retries.
+
+- **Safe failures.** Errors support `errors.Is` with `ErrInvalid`, `ErrNotFound`, `ErrPermission`, `ErrUnavailable`, and `ErrIndeterminate`. First-party drivers do not retain provider errors or response bodies in returned errors. `secret.Func` returns callback errors unchanged; the callback owns their classification and sanitization.
+
+- **Uncertain writes.** Check `ErrIndeterminate` before cancellation or deadline errors. A canceled mutation may still have committed remotely, so reconcile before retrying. Caller cancellation remains detectable alongside `ErrIndeterminate`. See the [uncertain-write example](#mutation-errors).
+
+- **Client ownership.** Constructing code owns the SDK client or file root. Drivers borrow them and never close them. First-party drivers do not log; review injected client logging separately because it can disclose provider metadata.
 
 ## Runnable Examples
 
@@ -129,12 +149,33 @@ These offline programs are executed by the shared example runner and checked aga
 
 Each program below shows SDK authentication, client construction, bindings, and a read of an existing secret. They print `credential loaded` on success and keep the value out of the output. Configure the provider credentials and read permissions before running one. These examples do not create, replace, or delete resources.
 
-| Provider | Authentication | Run from this checkout |
-| --- | --- | --- |
-| [AWS Secrets Manager](examples/providers/aws/main.go) | AWS default credential chain and configured region, including profiles or workload roles | `go -C examples run ./providers/aws -arn arn:aws:secretsmanager:us-east-1:123456789012:secret:production/database-AbCdEf` |
-| [Google Secret Manager](examples/providers/gcp/main.go) | Application Default Credentials | `go -C examples run ./providers/gcp -parent projects/my-project -secret database-password` |
-| [Azure Key Vault](examples/providers/azure/main.go) | DefaultAzureCredential, including Azure CLI or managed identity | `go -C examples run ./providers/azure -vault https://my-vault.vault.azure.net/ -secret database-password` |
-| [Vault KV v2](examples/providers/vault/main.go) | `VAULT_ADDR`, `VAULT_TOKEN`, and optional Vault SDK TLS and namespace settings | `go -C examples run ./providers/vault -mount secret -path production/database-password` |
+**AWS Secrets Manager** ([source](examples/providers/aws/main.go)). Uses the AWS default credential chain and configured region, including profiles or workload roles.
+
+```sh
+go -C examples run ./providers/aws \
+  -arn arn:aws:secretsmanager:us-east-1:123456789012:secret:production/database-AbCdEf
+```
+
+**Google Secret Manager** ([source](examples/providers/gcp/main.go)). Uses Application Default Credentials.
+
+```sh
+go -C examples run ./providers/gcp \
+  -parent projects/my-project -secret database-password
+```
+
+**Azure Key Vault** ([source](examples/providers/azure/main.go)). Uses DefaultAzureCredential, including Azure CLI or managed identity.
+
+```sh
+go -C examples run ./providers/azure \
+  -vault https://my-vault.vault.azure.net/ -secret database-password
+```
+
+**Vault KV v2** ([source](examples/providers/vault/main.go)). Uses `VAULT_ADDR`, `VAULT_TOKEN`, and optional Vault SDK TLS and namespace settings.
+
+```sh
+go -C examples run ./providers/vault \
+  -mount secret -path production/database-password
+```
 
 Replace the public resource identifiers with your own. Vault documents must have the scalar shape `{"value":"..."}`; see [provider contracts](docs/drivers.md#vault-kv-v2) for ownership requirements before enabling writes. The complete programs include imports and command-line flags; their SDK setup and read workflows also appear below.
 
@@ -412,24 +453,6 @@ fmt.Println("removed:", errors.Is(err, secret.ErrNotFound))
 
 
 
-## How it works
-
-- **Names and bindings.** Names follow `[A-Z][A-Z0-9_]*`, with a maximum of 255 bytes. Use application identifiers such as `DATABASE_PASSWORD`. Bindings are copied at construction, and unknown names never reach a provider.
-
-- **Exact values.** Values are ordinary strings. Reads preserve exact bytes within the provider's capabilities, without trimming, JSON parsing, environment fallback, caching, or rotation. Keep returned values out of logs and diagnostics.
-
-- **Writes and deletion.** `Set` publishes a new current value at an existing resource. `Delete` targets the entire resource using its provider's retention policy.
-
-- **Concurrency.** A Store serializes mutations to the same binding. Different bindings and reads can proceed concurrently. Mutable bindings require exclusive lifecycle ownership.
-
-- **Retries.** Provider SDK retries remain caller-owned except Google version creation, where the driver disables automatic retries.
-
-- **Safe failures.** Errors support `errors.Is` with `ErrInvalid`, `ErrNotFound`, `ErrPermission`, `ErrUnavailable`, and `ErrIndeterminate`. Provider errors and response bodies are never retained in the public error graph.
-
-- **Uncertain writes.** Check `ErrIndeterminate` before cancellation or deadline errors. A canceled mutation may still have committed remotely, so reconcile before retrying. Caller cancellation remains detectable alongside `ErrIndeterminate`. See the [uncertain-write example](#mutation-errors).
-
-- **Client ownership.** Constructing code owns the SDK client or file root. Drivers borrow them and never close them. First-party drivers do not log; review injected client logging separately because it can disclose provider metadata.
-
 ## Development
 
 ```sh
@@ -443,7 +466,7 @@ make check-generated
 make modules-check
 ```
 
-Integration tests require Docker. Each service runs once per package, uses isolated public fixtures, and is cleaned up after failures. Unit coverage is measured independently from integration coverage and enforced at exactly 100% of library statements. Documentation and badge counts are generated from source-bound passing test evidence.
+Integration tests require Docker. They use real provider SDKs and isolated public fixtures. Unit coverage is measured independently from integration coverage and enforced at exactly 100% of library statements. Badges are generated from passing test evidence tied to the library source. README snippets come from the example programs.
 
 See [development and releases](docs/development.md) and the [accepted design](docs/design.md) for detailed contracts and verification policy.
 
