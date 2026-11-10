@@ -91,31 +91,14 @@ Import only the capabilities and drivers your application needs. Provider SDK de
 
 Run from the repository root:
 
-**[Mounted files](examples/files/main.go)**
-
 ```sh
-go -C examples run ./files
+go -C examples run ./files             # Mounted files
+go -C examples run ./reader            # Reader adapter
+go -C examples run ./errors            # Uncertain writes
+go -C examples test -run TestStore -v   # Application tests
 ```
 
-**[Reader adapter](examples/reader/main.go)**
-
-```sh
-go -C examples run ./reader
-```
-
-**[Uncertain writes](examples/errors/main.go)**
-
-```sh
-go -C examples run ./errors
-```
-
-**[Application tests](examples/testing_test.go)**
-
-```sh
-go -C examples test -run TestStore -v
-```
-
-These offline programs are executed by the shared example runner and checked against the output comments beside their calls. Test fixtures use public placeholder values.
+These examples run offline with public fixtures. Their output is checked by tests.
 
 ### Managed providers
 
