@@ -33,7 +33,7 @@
 
 ## Quick Start
 
-Use the same application name with a mounted file or a managed provider. The `directory` below is the path to your mounted secrets directory. The caller owns and closes the root.
+Bind application names to mounted files or managed provider resources. The `directory` below is the path to your mounted secrets directory. The caller owns and closes the root.
 
 ```go
 root, err := os.OpenRoot(directory)
@@ -43,23 +43,31 @@ if err != nil {
 defer root.Close()
 
 reader, err := filesecret.New(root, map[string]string{
+	"DATABASE_USERNAME": "database-username",
 	"DATABASE_PASSWORD": "database-password",
 })
 if err != nil {
 	panic(err)
 }
 
-password, err := reader.Get(context.Background(), "DATABASE_PASSWORD")
+ctx := context.Background()
+username, err := reader.Get(ctx, "DATABASE_USERNAME")
 if err != nil {
 	panic(err)
 }
-// Pass password directly to your database client. Keep it out of logs.
-_ = password
-fmt.Println("credential loaded")
-// Output: credential loaded
+password, err := reader.Get(ctx, "DATABASE_PASSWORD")
+if err != nil {
+	panic(err)
+}
+// Pass both values directly to your database client. Keep them out of logs.
+_, _ = username, password
+fmt.Println("database credentials loaded")
+// Output: database credentials loaded
 ```
 
 Import `github.com/goforj/secret/driver/filesecret` for this example. The complete [runnable program](examples/files/main.go) creates a public fixture directory first. File confinement requires Go 1.25.12+, Go 1.26.5+, or stable Go 1.27+.
+
+Each `Get` reads one binding. Reuse the reader and context for additional names; the same pattern works with every managed driver. Reads are independent, so values read together are not an atomic snapshot.
 
 Application services can accept `secret.Reader`. Workflows that replace or delete values can accept `secret.Writer`, `secret.Deleter`, or `secret.Store`.
 
@@ -167,20 +175,26 @@ if err != nil {
 defer root.Close()
 
 reader, err := filesecret.New(root, map[string]string{
+	"DATABASE_USERNAME": "database-username",
 	"DATABASE_PASSWORD": "database-password",
 })
 if err != nil {
 	panic(err)
 }
 
-password, err := reader.Get(context.Background(), "DATABASE_PASSWORD")
+ctx := context.Background()
+username, err := reader.Get(ctx, "DATABASE_USERNAME")
 if err != nil {
 	panic(err)
 }
-// Pass password directly to your database client. Keep it out of logs.
-_ = password
-fmt.Println("credential loaded")
-// Output: credential loaded
+password, err := reader.Get(ctx, "DATABASE_PASSWORD")
+if err != nil {
+	panic(err)
+}
+// Pass both values directly to your database client. Keep them out of logs.
+_, _ = username, password
+fmt.Println("database credentials loaded")
+// Output: database credentials loaded
 ```
 
 <a id="aws-secrets"></a>
