@@ -23,9 +23,9 @@ func main() {
 	}
 }
 
-// snippet:start
 // run borrows a KV v2 client without taking over authentication or token renewal.
 func run(mount, path string) error {
+	// snippet:start
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	client, err := api.NewClient(nil)
@@ -46,7 +46,6 @@ func run(mount, path string) error {
 	_ = password
 	fmt.Println("credential loaded")
 	// Output: credential loaded
+	// snippet:end
 	return nil
 }
-
-// snippet:end

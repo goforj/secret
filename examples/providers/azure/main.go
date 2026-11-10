@@ -28,9 +28,9 @@ func main() {
 	}
 }
 
-// snippet:start
 // run lets the SDK select a configured development or workload identity.
 func run(vault, name string) error {
+	// snippet:start
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	credential, err := azidentity.NewDefaultAzureCredential(nil)
@@ -55,7 +55,6 @@ func run(vault, name string) error {
 	_ = password
 	fmt.Println("credential loaded")
 	// Output: credential loaded
+	// snippet:end
 	return nil
 }
-
-// snippet:end

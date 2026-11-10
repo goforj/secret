@@ -221,6 +221,8 @@ The examples module requires Go 1.26 because it imports every managed driver. No
 
 ## Examples
 
+Provider snippets use resource identifiers from your application configuration. The complete programs accept those identifiers as command-line flags.
+
 <a id="mounted-files"></a>
 
 ### Read mounted files
@@ -264,31 +266,27 @@ fmt.Println("database credentials loaded")
 [Complete source](examples/providers/aws/main.go)
 
 ```go
-// run binds an application name without exposing the retrieved credential.
-func run(arn string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	cfg, err := config.LoadDefaultConfig(ctx)
-	if err != nil {
-		return err
-	}
-	client := secretsmanager.NewFromConfig(cfg)
-	store, err := awssecret.New(client, map[string]awssecret.Binding{
-		"DATABASE_PASSWORD": {ARN: arn, Encoding: awssecret.Text},
-	})
-	if err != nil {
-		return err
-	}
-	password, err := store.Get(ctx, "DATABASE_PASSWORD")
-	if err != nil {
-		return err
-	}
-	// Pass password to your database client instead of logging it.
-	_ = password
-	fmt.Println("credential loaded")
-	// Output: credential loaded
-	return nil
+ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+defer cancel()
+cfg, err := config.LoadDefaultConfig(ctx)
+if err != nil {
+	return err
 }
+client := secretsmanager.NewFromConfig(cfg)
+store, err := awssecret.New(client, map[string]awssecret.Binding{
+	"DATABASE_PASSWORD": {ARN: arn, Encoding: awssecret.Text},
+})
+if err != nil {
+	return err
+}
+password, err := store.Get(ctx, "DATABASE_PASSWORD")
+if err != nil {
+	return err
+}
+// Pass password to your database client instead of logging it.
+_ = password
+fmt.Println("credential loaded")
+// Output: credential loaded
 ```
 
 <a id="google-secrets"></a>
@@ -298,31 +296,27 @@ func run(arn string) error {
 [Complete source](examples/providers/gcp/main.go)
 
 ```go
-// run owns and closes the SDK client borrowed by the driver.
-func run(parent, id string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	client, err := secretmanager.NewClient(ctx)
-	if err != nil {
-		return err
-	}
-	defer client.Close()
-	store, err := gcpsecret.New(client, parent, map[string]string{
-		"DATABASE_PASSWORD": id,
-	})
-	if err != nil {
-		return err
-	}
-	password, err := store.Get(ctx, "DATABASE_PASSWORD")
-	if err != nil {
-		return err
-	}
-	// Pass password to your database client instead of logging it.
-	_ = password
-	fmt.Println("credential loaded")
-	// Output: credential loaded
-	return nil
+ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+defer cancel()
+client, err := secretmanager.NewClient(ctx)
+if err != nil {
+	return err
 }
+defer client.Close()
+store, err := gcpsecret.New(client, parent, map[string]string{
+	"DATABASE_PASSWORD": id,
+})
+if err != nil {
+	return err
+}
+password, err := store.Get(ctx, "DATABASE_PASSWORD")
+if err != nil {
+	return err
+}
+// Pass password to your database client instead of logging it.
+_ = password
+fmt.Println("credential loaded")
+// Output: credential loaded
 ```
 
 <a id="azure-secrets"></a>
@@ -332,34 +326,30 @@ func run(parent, id string) error {
 [Complete source](examples/providers/azure/main.go)
 
 ```go
-// run lets the SDK select a configured development or workload identity.
-func run(vault, name string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	credential, err := azidentity.NewDefaultAzureCredential(nil)
-	if err != nil {
-		return err
-	}
-	client, err := azsecrets.NewClient(vault, credential, nil)
-	if err != nil {
-		return err
-	}
-	store, err := azuresecret.New(client, map[string]azuresecret.Binding{
-		"DATABASE_PASSWORD": {Name: name},
-	})
-	if err != nil {
-		return err
-	}
-	password, err := store.Get(ctx, "DATABASE_PASSWORD")
-	if err != nil {
-		return err
-	}
-	// Pass password to your database client instead of logging it.
-	_ = password
-	fmt.Println("credential loaded")
-	// Output: credential loaded
-	return nil
+ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+defer cancel()
+credential, err := azidentity.NewDefaultAzureCredential(nil)
+if err != nil {
+	return err
 }
+client, err := azsecrets.NewClient(vault, credential, nil)
+if err != nil {
+	return err
+}
+store, err := azuresecret.New(client, map[string]azuresecret.Binding{
+	"DATABASE_PASSWORD": {Name: name},
+})
+if err != nil {
+	return err
+}
+password, err := store.Get(ctx, "DATABASE_PASSWORD")
+if err != nil {
+	return err
+}
+// Pass password to your database client instead of logging it.
+_ = password
+fmt.Println("credential loaded")
+// Output: credential loaded
 ```
 
 <a id="vault-secrets"></a>
@@ -369,30 +359,26 @@ func run(vault, name string) error {
 [Complete source](examples/providers/vault/main.go)
 
 ```go
-// run borrows a KV v2 client without taking over authentication or token renewal.
-func run(mount, path string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	client, err := api.NewClient(nil)
-	if err != nil {
-		return err
-	}
-	store, err := vaultsecret.New(client.KVv2(mount), map[string]string{
-		"DATABASE_PASSWORD": path,
-	})
-	if err != nil {
-		return err
-	}
-	password, err := store.Get(ctx, "DATABASE_PASSWORD")
-	if err != nil {
-		return err
-	}
-	// Pass password to your database client instead of logging it.
-	_ = password
-	fmt.Println("credential loaded")
-	// Output: credential loaded
-	return nil
+ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+defer cancel()
+client, err := api.NewClient(nil)
+if err != nil {
+	return err
 }
+store, err := vaultsecret.New(client.KVv2(mount), map[string]string{
+	"DATABASE_PASSWORD": path,
+})
+if err != nil {
+	return err
+}
+password, err := store.Get(ctx, "DATABASE_PASSWORD")
+if err != nil {
+	return err
+}
+// Pass password to your database client instead of logging it.
+_ = password
+fmt.Println("credential loaded")
+// Output: credential loaded
 ```
 
 <a id="reader-adapter"></a>

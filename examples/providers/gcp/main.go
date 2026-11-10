@@ -27,9 +27,9 @@ func main() {
 	}
 }
 
-// snippet:start
 // run owns and closes the SDK client borrowed by the driver.
 func run(parent, id string) error {
+	// snippet:start
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	client, err := secretmanager.NewClient(ctx)
@@ -51,7 +51,6 @@ func run(parent, id string) error {
 	_ = password
 	fmt.Println("credential loaded")
 	// Output: credential loaded
+	// snippet:end
 	return nil
 }
-
-// snippet:end

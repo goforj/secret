@@ -27,9 +27,9 @@ func main() {
 	}
 }
 
-// snippet:start
 // run binds an application name without exposing the retrieved credential.
 func run(arn string) error {
+	// snippet:start
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	cfg, err := config.LoadDefaultConfig(ctx)
@@ -51,7 +51,6 @@ func run(arn string) error {
 	_ = password
 	fmt.Println("credential loaded")
 	// Output: credential loaded
+	// snippet:end
 	return nil
 }
-
-// snippet:end
