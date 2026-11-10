@@ -233,7 +233,7 @@ fmt.Println("removed:", errors.Is(err, secret.ErrNotFound))
 
 
 
-## Behavior
+## How it works
 
 - **Names and bindings.** Names follow `[A-Z][A-Z0-9_]*`, with a maximum of 255 bytes. Use application identifiers such as `DATABASE_PASSWORD`. Bindings are copied at construction, and unknown names never reach a provider.
 
