@@ -1,6 +1,6 @@
 {
-  "source": "b394fcd958938a52286c8c24376294a2a376606d251637b861e25115a3b8bbd4",
-  "tests": 98,
+  "source": "3e7615b573a03fb9a730652acee61dd6404fc93be65debeda9487948054c9e00",
+  "tests": 106,
   "covered": 756,
   "total": 756,
   "cases": [
@@ -12,6 +12,14 @@
     "TestEncryptedCommitFailures",
     "TestEncryptedConcurrency",
     "TestEncryptedConstructor",
+    "TestEncryptedCrashProcess",
+    "TestEncryptedCrashRecovery",
+    "TestEncryptedCrashRecovery/create/published",
+    "TestEncryptedCrashRecovery/create/staged",
+    "TestEncryptedCrashRecovery/replace/published",
+    "TestEncryptedCrashRecovery/replace/staged",
+    "TestEncryptedCrashRecovery/rotate/published",
+    "TestEncryptedCrashRecovery/rotate/staged",
     "TestEncryptedRoundTrip",
     "TestEncryptedStageFailures",
     "TestEncryptedSymlinkEscape",

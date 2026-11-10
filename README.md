@@ -7,7 +7,7 @@
 <p align="center">
   <a href="LICENSE"><img src="docs/assets/badges/summary-license.svg" alt="License: MIT"></a>
   <a href="https://go.dev"><img src="docs/assets/badges/summary-go.svg" alt="Go: 1.24.4+"></a>
-  <img src="docs/assets/badges/summary-status.svg" alt="Status: unreleased">
+  <img src="docs/assets/badges/summary-status.svg" alt="Status: v0.1.0 candidate">
   <a href="https://app.codecov.io/gh/goforj/secret"><img src="docs/assets/badges/summary-coverage.svg" alt="Library unit coverage: 100%"></a>
   <img src="docs/assets/badges/summary-tests.svg" alt="Executed library unit tests">
 </p>
@@ -72,7 +72,7 @@ fmt.Println("credential deleted")
 // Output: credential deleted
 ```
 
-Import `github.com/goforj/secret/driver/filesecret` for this example. The complete [runnable program](examples/encrypted/main.go) uses a disposable key and directory. For persistent data, retain the key outside the secret directory: losing it loses access to the values. File confinement requires Go 1.25.12+, Go 1.26.5+, or stable Go 1.27+.
+Import `github.com/goforj/secret/driver/filesecret` for this example. The complete [runnable program](examples/encrypted/main.go) uses a disposable key and directory. For persistent data, use the [key-loading and recovery workflow](docs/drivers.md#persistent-keys-and-recovery) and keep the key outside the secret directory. File confinement requires Go 1.25.12+, Go 1.26.5+, or stable Go 1.27+.
 
 `NewStore` encrypts and authenticates values on disk. `New` is a separate, read-only **plaintext** reader for externally managed Docker and Kubernetes mounts. See [file encryption and key management](docs/drivers.md#encrypted-local-files).
 
@@ -100,7 +100,7 @@ Cloud verification uses the listed emulators and real provider SDKs. Hosted AWS,
 
 ## Installation
 
-The library is unreleased. To try it, clone the repository and use its local module replacements. The examples module requires Go 1.26; use Go 1.26.5+ in that branch or stable Go 1.27+ for the mounted-file example:
+The first `v0.1.0` release candidate is being verified; version tags have not been published. Run examples against this checkout's local modules. The examples module requires Go 1.26; use Go 1.26.5+ in that branch or stable Go 1.27+ for file examples:
 
 ```sh
 git clone https://github.com/goforj/secret.git
@@ -152,6 +152,13 @@ go -C examples run ./files             # Plaintext mounted files
 go -C examples run ./reader            # Reader adapter
 go -C examples run ./errors            # Uncertain writes
 go -C examples test -run TestStore -v   # Application tests
+```
+
+Read existing encrypted files with a [persistent key file](docs/drivers.md#persistent-keys-and-recovery):
+
+```sh
+go -C examples run ./configured/persistent \
+  -directory /var/lib/myapp/secrets -key-file /run/secrets/myapp-master.key
 ```
 
 Managed examples require [provider authentication](docs/drivers.md#running-provider-examples) and existing secrets. Replace the sample identifiers:
@@ -215,6 +222,38 @@ if err := store.Delete(ctx, "DATABASE_PASSWORD"); err != nil {
 }
 fmt.Println("credential deleted")
 // Output: credential deleted
+```
+
+<a id="persistent-keys"></a>
+
+### Load a persistent encryption key
+
+[Complete source](examples/configured/persistent/main.go)
+
+```go
+key, err := loadKey(keyFile)
+if err != nil {
+	return err
+}
+root, err := os.OpenRoot(directory)
+if err != nil {
+	return errors.New("encrypted secret directory unavailable")
+}
+defer root.Close()
+store, err := filesecret.NewStore(root, key, map[string]string{
+	"DATABASE_PASSWORD": "database-password.enc",
+})
+if err != nil {
+	return err
+}
+password, err := store.Get(context.Background(), "DATABASE_PASSWORD")
+if err != nil {
+	return err
+}
+// Pass password to your database client instead of logging it.
+_ = password
+fmt.Println("credential loaded from persistent key")
+// Output: credential loaded from persistent key
 ```
 
 <a id="rotate-files"></a>

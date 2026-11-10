@@ -22,6 +22,7 @@ type Example struct {
 // Examples indexes canonical application workflows and provider construction.
 var Examples = []Example{
 	{"encrypted-files", "Store encrypted files", "examples/encrypted/main.go", []string{"filesecret.NewStore"}},
+	{"persistent-keys", "Load a persistent encryption key", "examples/configured/persistent/main.go", nil},
 	{"rotate-files", "Rotate encryption keys", "examples/rotation/main.go", []string{"filesecret.NewStoreWithKeys", "filesecret.Store.Rotate"}},
 	{"mounted-files", "Read mounted files", "examples/files/main.go", []string{"filesecret.New", "Reader.Get"}},
 	{"aws-secrets", "Read from AWS Secrets Manager", "examples/providers/aws/main.go", []string{"awssecret.New"}},
@@ -252,7 +253,7 @@ func Generate(root string) error {
 	if _, err := LoadEvidence(root, "integration", true); err != nil {
 		return err
 	}
-	for key, pair := range map[string][3]string{"status": {"status", "unreleased", "#6c757d"}, "go": {"go", "1.24.4+", "#007ec6"}, "license": {"license", "MIT", "#007ec6"}, "coverage": {"unit coverage", "100%", "#4c1"}, "tests": {"unit tests", fmt.Sprint(unit.Tests), "#4c1"}} {
+	for key, pair := range map[string][3]string{"status": {"status", "v0.1.0 candidate", "#007ec6"}, "go": {"go", "1.24.4+", "#007ec6"}, "license": {"license", "MIT", "#007ec6"}, "coverage": {"unit coverage", "100%", "#4c1"}, "tests": {"unit tests", fmt.Sprint(unit.Tests), "#4c1"}} {
 		if err := write(root, "docs/assets/badges/summary-"+key+".svg", badge(pair[0], pair[1], pair[2])); err != nil {
 			return err
 		}

@@ -6,6 +6,8 @@
 
 Canonical offline programs live directly under `examples/*/`. Their output expectations sit immediately after the producing call. `examples/run_test.go` discovers these programs, builds them with coverage instrumentation, carries race instrumentation into child programs, executes them, and verifies output. Set `SECRET_EXAMPLE_COVERDIR` to an existing directory to retain child coverage data.
 
+The configured persistent-key program lives under `examples/configured/persistent/`. Normal tests execute it with explicit fixture paths and separately stored key/recovery files, including failed startup and restoration. They never read deployment keys. It shares the offline runner's source-owned output, coverage, and race helpers. For a real run, supply your own existing paths explicitly; the program performs only reads.
+
 Managed provider programs live under `examples/providers/`. Normal module tests compile them without accessing credentials or services. Run them explicitly with your provider's authentication and existing resources, using the commands in the README. Hosted output remains unverified. The examples module requires Go 1.26 to compile all managed drivers; it does not change the library modules' minimum Go versions.
 
 Azure and Vault require Go 1.26 through their pinned `golang.org/x/net v0.62.0` dependency. Google's pinned SDK stack also requires Go 1.26. These constraints do not affect the core, test support, or AWS driver. The file driver requires Go 1.25.12+, Go 1.26.5+, or stable Go 1.27+ for the patched `os.Root` implementation.
@@ -40,6 +42,8 @@ Testcontainers owns one service per provider for the package run. The harness re
 
 File tests use actual descriptor reads, projected-volume rotation layouts, and concurrent symlink swaps. Linux/macOS CI runs the slash-symlink confinement regression on Go 1.25.12, Go 1.26.5, and stable. Windows runs its descriptor suite separately. Do not remove the patched-toolchain policy merely because a later Go branch satisfies the module directive.
 
+Encrypted-file crash tests start the test binary as a separate writer process, synchronize on filesystem state at a context checkpoint, and kill it before normal cleanup. A new process then completes the write or rotation. The checkpoints cover synced staging before replacement, replacement before acknowledgement, and the first committed file of a multi-file rotation. No production test hooks are added. Staged ciphertext may survive a crash; the tests verify that it is never plaintext or mistaken for the committed value. This does not simulate power loss or establish stronger durability than the platform's file and directory operations provide.
+
 ## Module publication
 
 Runtime modules have independent tags:
@@ -59,6 +63,8 @@ Runtime modules have independent tags:
 `make release-plan VERSION=v0.1.0` prints the intended tags without creating them. Before a release, align nested root requirements with the intended published root version. Run `make release-check VERSION=v0.1.0` only from a clean committed candidate. The initial candidate is v0.1.0, and every sibling requirement is aligned to that version. The default VERSION matches it. For subsequent releases, update all applicable runtime, example, and integration requirements together while retaining the development replacements.
 
 The archive verifier freezes one commit for source files, module declarations, licenses, timestamps, and module boundaries, then serves exact candidate zip, mod, and info files through a private temporary file proxy. Working-tree edits or a moving HEAD cannot change that snapshot. Each consumer has no replace directives and uses a fresh temporary module cache. It compiles exported capabilities, executes consumer contract checks, runs `go mod verify`, and rejects replacements, checkout resolution, or unexpected root/module versions. A combined consumer also imports all seven runtime modules to detect SDK dependency conflicts. External dependency checksum verification is forced on even when the caller has disabled it locally.
+
+The [v0.1.0 release notes](releases/v0.1.0.md) remain a draft until all tags are published and verified. Before tagging, replace the candidate badge and installation wording in their authoritative generator/template sources, regenerate, commit, and run archive checks against that final commit. Publish only the exact tested commit; a candidate label or a passing archive rehearsal is not publication.
 
 Archive rehearsal validates unpublished composition. It does not establish that prerequisites are publicly available. For a release, publish the tested root first, verify it independently with `make release-published VERSION=v0.1.0 MODULE=.`, then publish the drivers using that same tested root version. Never infer nested-module publication from a root tag.
 

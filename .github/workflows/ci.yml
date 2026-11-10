@@ -87,6 +87,8 @@ jobs:
         with:
           go-version: stable
       - run: go -C driver/filesecret test -race ./...
+      - name: Verify persistent-key loading and recovery on Windows
+        run: go -C examples test -race -run '^TestPersistentKeyProgram$' .
 
   integration:
     runs-on: ubuntu-latest

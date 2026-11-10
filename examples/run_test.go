@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -22,54 +23,79 @@ func TestPrograms(t *testing.T) {
 	}
 	for _, path := range paths {
 		t.Run(filepath.Dir(path), func(t *testing.T) {
-			source, err := os.ReadFile(path)
+			expected := expectedOutput(t, path)
+			output, stderr, err := runProgram(t, buildProgram(t, path))
 			if err != nil {
-				t.Fatal(err)
+				t.Fatalf("example failed: %v\n%s", err, stderr)
 			}
-			var expected []string
-			for _, line := range strings.Split(string(source), "\n") {
-				if line = strings.TrimSpace(line); strings.HasPrefix(line, "// Output: ") {
-					expected = append(expected, strings.TrimPrefix(line, "// Output: "))
-				}
-			}
-			if len(expected) == 0 {
-				t.Fatal("example lacks expected output")
-			}
-			binary := filepath.Join(t.TempDir(), "example")
-			coverage := t.TempDir()
-			args := []string{"build", "-cover", "-coverpkg=github.com/goforj/secret/...", "-o", binary, "./" + filepath.Dir(path)}
-			if raceEnabled() {
-				args = append(args[:1], append([]string{"-race"}, args[1:]...)...)
-			}
-			build := exec.Command("go", args...)
-			if output, err := build.CombinedOutput(); err != nil {
-				t.Fatalf("build failed: %v\n%s", err, output)
-			}
-			run := exec.Command(binary)
-			run.Env = append(os.Environ(), "GOCOVERDIR="+coverage)
-			var stderr bytes.Buffer
-			run.Stderr = &stderr
-			output, err := run.Output()
-			if err != nil {
-				t.Fatalf("example failed: %v\n%s", err, stderr.String())
-			}
-			if string(output) != strings.Join(expected, "\n")+"\n" {
+			if string(output) != expected {
 				t.Fatalf("output mismatch:\n%s", output)
-			}
-			if destination := os.Getenv("SECRET_EXAMPLE_COVERDIR"); destination != "" {
-				entries, _ := os.ReadDir(coverage)
-				for _, entry := range entries {
-					data, err := os.ReadFile(filepath.Join(coverage, entry.Name()))
-					if err != nil {
-						t.Fatal(err)
-					}
-					if err := os.WriteFile(filepath.Join(destination, entry.Name()), data, 0600); err != nil {
-						t.Fatal(err)
-					}
-				}
 			}
 		})
 	}
+}
+
+// expectedOutput keeps every executable's output contract in its authoritative source.
+func expectedOutput(t *testing.T, path string) string {
+	t.Helper()
+	source, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var expected []string
+	for _, line := range strings.Split(string(source), "\n") {
+		if line = strings.TrimSpace(line); strings.HasPrefix(line, "// Output: ") {
+			expected = append(expected, strings.TrimPrefix(line, "// Output: "))
+		}
+	}
+	if len(expected) == 0 {
+		t.Fatal("example lacks expected output")
+	}
+	return strings.Join(expected, "\n") + "\n"
+}
+
+// buildProgram preserves library coverage and race instrumentation in configured examples too.
+func buildProgram(t *testing.T, path string) string {
+	t.Helper()
+	binary := filepath.Join(t.TempDir(), "example")
+	if runtime.GOOS == "windows" {
+		binary += ".exe"
+	}
+	args := []string{"build", "-cover", "-coverpkg=github.com/goforj/secret/...", "-o", binary, "./" + filepath.Dir(path)}
+	if raceEnabled() {
+		args = append(args[:1], append([]string{"-race"}, args[1:]...)...)
+	}
+	if output, err := exec.Command("go", args...).CombinedOutput(); err != nil {
+		t.Fatalf("build failed: %v\n%s", err, output)
+	}
+	return binary
+}
+
+// runProgram captures actual process results and retains child coverage even after a rejected request.
+func runProgram(t *testing.T, binary string, args ...string) ([]byte, string, error) {
+	t.Helper()
+	coverage := t.TempDir()
+	run := exec.Command(binary, args...)
+	run.Env = append(os.Environ(), "GOCOVERDIR="+coverage)
+	var stderr bytes.Buffer
+	run.Stderr = &stderr
+	output, runErr := run.Output()
+	if destination := os.Getenv("SECRET_EXAMPLE_COVERDIR"); destination != "" {
+		entries, err := os.ReadDir(coverage)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, entry := range entries {
+			data, err := os.ReadFile(filepath.Join(coverage, entry.Name()))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(destination, entry.Name()), data, 0600); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	return output, stderr.String(), runErr
 }
 
 // TestApplicationOutput executes the canonical test snippet and checks its displayed output.

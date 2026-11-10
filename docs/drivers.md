@@ -108,6 +108,21 @@ Rotation processes bindings in name order and stops on the first error. It is no
 
 The encrypted store uses the same confined path rules and patched toolchain requirements as mounted-file reads below. It adds no external dependencies or minimum Go version increase.
 
+### Persistent keys and recovery
+
+The [configured application example](../examples/configured/persistent/main.go) loads an existing key on every process start. It never generates a replacement, writes secret values, or prints keys or values. Its `loadKey` helper accepts exactly 32 raw bytes from a regular file, caps reads at 33 bytes, and requires owner-only file access on Unix. On Windows, provision equivalent access through ACLs. Use trusted key-file paths and parent directories; the key can come from a deployment secret mount or a separately managed credential file. Other applications can supply the same bytes directly from their key manager without using this helper.
+
+```sh
+go -C examples run ./configured/persistent \
+  -directory /var/lib/myapp/secrets -key-file /run/secrets/myapp-master.key
+```
+
+Replace these paths with your existing encrypted directory and separately provisioned key file. The example reads the `DATABASE_PASSWORD` binding at `database-password.enc`. The key file contains raw random bytes, not a passphrase, base64 text, or a newline-terminated string. Keep recovery copies separately protected and outside ciphertext backups.
+
+If key delivery fails, restore the exact original key through its key manager or protected recovery copy, then restart the same application. Do not generate a replacement key or delete ciphertext to make startup succeed. A wrong or missing key fails closed and leaves the encrypted files unchanged. Lost keys cannot be recovered from ciphertext. After rotation, retain recovery access to old keys for old backups even after removing them from live configuration. Binding names and relative paths are authenticated, so recovery must preserve those identifiers too.
+
+`TestPersistentKeyProgram` builds this actual program and runs separate processes against a fixture: repeated reads, missing and malformed keys, a wrong key, unsafe permissions, corrupt ciphertext, and restoring a protected recovery copy. `TestEncryptedCrashRecovery` separately kills real writer processes after synced staging, after publication before acknowledgement, and partway through rotation, then verifies recovery in new processes. These tests exercise process death, not a machine power cut or storage-device failure. Orphaned staging files remain ciphertext and are not automatically promoted or removed after a crash.
+
 ## Mounted files
 
 `filesecret.New(root, bindings)` is explicitly a **plaintext, read-only** mounted-file reader, suitable for Docker secrets and Kubernetes projected volumes. It performs no encryption or decryption. Relative paths are at most 4,096 bytes and reject traversal components, backslashes, NUL, and platform-specific drive syntax. Contained symlinks are allowed for projected volumes. Aliases are harmless for these read-only bindings.
