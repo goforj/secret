@@ -136,7 +136,7 @@ Import only the capabilities and drivers your application needs. Provider SDK de
 
 ## Runnable Examples
 
-Run from the repository root:
+Run offline examples from the repository root:
 
 ```sh
 go -C examples run ./files             # Mounted files
@@ -145,43 +145,15 @@ go -C examples run ./errors            # Uncertain writes
 go -C examples test -run TestStore -v   # Application tests
 ```
 
-These examples run offline with public fixtures. Their output is checked by tests.
-
-### Managed providers
-
-Each program below shows SDK authentication, client construction, bindings, and a read of an existing secret. They print `credential loaded` on success and keep the value out of the output. Configure the provider credentials and read permissions before running one. These examples do not create, replace, or delete resources.
-
-**AWS Secrets Manager** ([source](examples/providers/aws/main.go)). Uses the AWS default credential chain and configured region, including profiles or workload roles.
+Managed examples require [provider authentication](docs/drivers.md#running-provider-examples) and existing secrets. Replace the sample identifiers:
 
 ```sh
 go -C examples run ./providers/aws \
   -arn arn:aws:secretsmanager:us-east-1:123456789012:secret:production/database-AbCdEf
+go -C examples run ./providers/gcp -parent projects/my-project -secret database-password
+go -C examples run ./providers/azure -vault https://my-vault.vault.azure.net/ -secret database-password
+go -C examples run ./providers/vault -mount secret -path production/database-password
 ```
-
-**Google Secret Manager** ([source](examples/providers/gcp/main.go)). Uses Application Default Credentials.
-
-```sh
-go -C examples run ./providers/gcp \
-  -parent projects/my-project -secret database-password
-```
-
-**Azure Key Vault** ([source](examples/providers/azure/main.go)). Uses DefaultAzureCredential, including Azure CLI or managed identity.
-
-```sh
-go -C examples run ./providers/azure \
-  -vault https://my-vault.vault.azure.net/ -secret database-password
-```
-
-**Vault KV v2** ([source](examples/providers/vault/main.go)). Uses `VAULT_ADDR`, `VAULT_TOKEN`, and optional Vault SDK TLS and namespace settings.
-
-```sh
-go -C examples run ./providers/vault \
-  -mount secret -path production/database-password
-```
-
-Replace the public resource identifiers with your own. Vault documents must have the scalar shape `{"value":"..."}`; see [provider contracts](docs/drivers.md#vault-kv-v2) for ownership requirements before enabling writes. The complete programs include imports and command-line flags; their SDK setup and read workflows also appear below.
-
-The examples module requires Go 1.26 because it imports every managed driver. Normal tests compile these provider programs without accessing credentials or services. Provider runs are explicit, and their success output has not been verified against hosted accounts.
 
 ## API Index
 

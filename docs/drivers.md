@@ -97,6 +97,19 @@ Every Get opens once, stats that descriptor, requires a regular file, and reads 
 
 Supported systems are Linux, macOS, and Windows. Patched toolchains are mandatory: Go 1.25.12+ in the 1.25 branch, Go 1.26.5+ in the 1.26 branch, or stable Go 1.27+. The regression test verifies that opening a symlink target ending in a slash cannot escape the root, before any descriptor is returned. Privileged mount changes inside the root are outside this boundary.
 
+## Running provider examples
+
+The programs under `examples/providers/` authenticate through their provider SDKs and read existing secrets. They print `credential loaded` on success without printing the value. They do not provision, replace, or delete resources.
+
+| Example | Authentication and configuration |
+| --- | --- |
+| [AWS](../examples/providers/aws/main.go) | AWS default credential chain and configured region, including profiles or workload roles |
+| [Google](../examples/providers/gcp/main.go) | Application Default Credentials |
+| [Azure](../examples/providers/azure/main.go) | DefaultAzureCredential, including Azure CLI or managed identity |
+| [Vault](../examples/providers/vault/main.go) | `VAULT_ADDR`, `VAULT_TOKEN`, and optional Vault SDK TLS and namespace settings |
+
+Grant read access to the selected resources. Vault documents must have the scalar shape `{"value":"..."}`. Normal tests compile these programs without accessing credentials or services; hosted example runs remain unverified.
+
 ## Verification boundaries
 
 All drivers have independent unit contract suites. SDK errors are tested with unsafe fixture prose and must not survive in returned error graphs. Unit statements are measured independently of integrations.
