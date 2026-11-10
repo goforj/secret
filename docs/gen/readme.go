@@ -21,6 +21,7 @@ type Example struct {
 
 // Examples indexes canonical application workflows and provider construction.
 var Examples = []Example{
+	{"encrypted-files", "Store encrypted files", "examples/encrypted/main.go", []string{"filesecret.NewStore"}},
 	{"mounted-files", "Read mounted files", "examples/files/main.go", []string{"filesecret.New", "Reader.Get"}},
 	{"aws-secrets", "Read from AWS Secrets Manager", "examples/providers/aws/main.go", []string{"awssecret.New"}},
 	{"google-secrets", "Read from Google Secret Manager", "examples/providers/gcp/main.go", []string{"gcpsecret.New"}},
@@ -133,7 +134,7 @@ func ExampleSections(root string) (string, string, error) {
 				group = "Errors"
 			case strings.HasPrefix(symbol, "secrettest."):
 				group = "Testing"
-			case strings.HasSuffix(symbol, ".New"):
+			case strings.HasSuffix(symbol, ".New") || symbol == "filesecret.NewStore":
 				group = "Driver Constructors"
 			}
 			groups[group] = append(groups[group], fmt.Sprintf("[%s](#%s)", symbol, example.ID))
@@ -209,7 +210,7 @@ func Presentation(root string) (string, string, error) {
 	drivers := []struct{ id, label, module, capability, verification string }{
 		{"aws", "AWS Secrets Manager", "awssecret", "Text or binary; standard recovery window", "Moto 5.1.16 emulator"},
 		{"azure", "Azure Key Vault", "azuresecret", "UTF-8; vault-configured soft deletion", "Lowkey Vault 7.4.0 emulator"},
-		{"files", "Mounted files", "filesecret", "Read exact bytes beneath a caller-owned root", "Real filesystem and projected-volume tests"},
+		{"files", "Local files", "filesecret", "AES-256-GCM store; explicit plaintext mounted-file reader", "Real filesystem, tampering, and projected-volume tests"},
 		{"google", "Google Secret Manager", "gcpsecret", "Binary values, CRC32C, and ETag deletion", "Google Secret Manager emulator (pinned image)"},
 		{"vault", "Vault KV v2", "vaultsecret", "Owned scalar paths; CAS and all-version deletion", "Real Vault 1.21.4 server"},
 	}
@@ -263,7 +264,7 @@ func Generate(root string) error {
 	if err != nil {
 		return err
 	}
-	quickstart, err := Snippet(root, "examples/files/main.go")
+	quickstart, err := Snippet(root, "examples/encrypted/main.go")
 	if err != nil {
 		return err
 	}

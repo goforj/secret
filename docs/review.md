@@ -26,11 +26,11 @@ These comparisons use the projects' primary documentation as reviewed on the dat
 | [AWS Secrets Manager caching client](https://github.com/aws/aws-secretsmanager-caching-go#cache-configuration) | AWS-specific caching with refresh TTL, version stages, and hooks; its documented failure policy can serve stale data after a failed refresh. | Keep cache and stale-value policy explicit outside the core. A caller needing that behavior can adapt its retrieval through Func. |
 | [rsjethani/secret](https://github.com/rsjethani/secret) | Secret value types with redacted formatting and serialization, plus explicit extraction. | This is complementary protection for values after retrieval. Keep ordinary strings for client interoperability, and clearly document caller responsibility for logging and storage. |
 
-[Go CDK secrets](https://gocloud.dev/howto/secrets/) is a portable encryption/decryption API backed by key-management services, not an equivalent named-secret store. It is useful for a different boundary and is not treated as a missing feature here.
+[Go CDK secrets](https://gocloud.dev/howto/secrets/) is a portable encryption/decryption API backed by key-management services. Local at-rest encryption is now provided by `filesecret.NewStore`, with key management kept caller-owned. The original mounted-file-only scope did not satisfy encrypted local storage requirements; the design amendment below addresses that gap.
 
 The existing Reader, Writer, Deleter, Store, and Func surface remains appropriate. Provider SDKs retain their own credentials, transport, endpoint, logging, and lifecycle configuration. Features such as environment fallback, JSON field selection, global registries, automatic rotation, and implicit caching remain outside this API.
 
-## Verification
+## Initial verification
 
 The candidate was checked on macOS arm64 using Go 1.27.3:
 
@@ -66,3 +66,13 @@ A second round on 2026-11-09 reviewed runtime request ownership, the release tru
 These changes retain the public library interfaces, driver construction, stored data, provider configuration, and minimum Go versions. They improve ownership of request data and release verification without adding runtime dependencies. The AWS request ownership, token reconciliation, and mutation serialization regressions are additionally stressed under the race detector.
 
 The local release candidate remains unpublished. Final archive evidence must match the latest committed candidate, including the combined consumer check. Root-first and per-module public verification commands are available for use after each authorized publication. Hosted account checks and actual Windows execution remain outside this local pass.
+
+## Encrypted local storage review
+
+The original review accepted a plaintext mounted-file reader without establishing the encryption requirement for local persistent secrets. `filesecret.NewStore` now adds authenticated AES-256-GCM storage with a caller-supplied 32-byte key. The existing `New` API and plaintext files remain unchanged. No module minimum, third-party dependency, or existing configuration changes. The versioned encrypted format is new, and plaintext migration requires an explicit write into a separate directory.
+
+The implementation pass covered binding-bound associated data, random nonces, bounded reads, ciphertext-only staging, atomic Unix replacement, directory flushing, authentication before destructive operations, and conservative post-dispatch error classification. The failure pass covered wrong keys, corruption, substitution, truncation, staging write/flush/close failures, cancellation at publication boundaries, and canceled lock waiters. The compatibility pass retained mounted-volume behavior and checked all ten modules plus an isolated encrypted-storage consumer.
+
+Validation uses Go 1.27.3 on macOS arm64: all-module race tests and vet pass; runtime evidence records 92 unit cases and 720 of 720 statements; all ten disposable-provider integration cases pass. The encrypted example executes in the shared example runner, and README generation is repeatable. The file suite also passes with the race detector on macOS Go 1.25.12 and Linux arm64 Go 1.27.2. Windows cross-compilation passes; Windows runtime validation remains in CI. Security scans find no reachable vulnerabilities; the examples dependency graph contains an advisory for an unimported OpenPGP package.
+
+The key is never persisted by the library. Key recovery, fewer than 2^32 encryptions per key, and separate-directory rotation remain caller responsibilities. Filesystem rollback detection, filename and length confidentiality, secure erasure, cross-process locking, and Windows Unix-style directory durability are not claimed. These limits are documented in the provider contracts rather than hidden behind a broad encryption guarantee.

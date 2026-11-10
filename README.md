@@ -16,7 +16,7 @@
   <a href="#features">Features</a> · <a href="#quick-start">Quick Start</a> · <a href="#drivers">Drivers</a> · <a href="#installation">Installation</a> · <a href="#how-it-works">How it works</a> · <a href="#runnable-examples">Examples</a> · <a href="#api-index">API</a>
 </p>
 
-Bind names such as `DATABASE_PASSWORD` to mounted files, AWS Secrets Manager, Google Secret Manager, Azure Key Vault, or Vault KV v2. Application code reads by name through `secret.Reader`; provider SDKs and resource locations stay in setup code.
+Bind names such as `DATABASE_PASSWORD` to encrypted local files, AWS Secrets Manager, Google Secret Manager, Azure Key Vault, or Vault KV v2. Application code reads by name through `secret.Reader`; provider SDKs and resource locations stay in setup code.
 
 Managed drivers also support replacing and deleting existing secrets. You own provisioning, authentication, and access policies.
 
@@ -37,7 +37,7 @@ Managed drivers also support replacing and deleting existing secrets. You own pr
 
 ## Quick Start
 
-Bind application names to mounted files or managed provider resources. The `directory` below is the path to your mounted secrets directory. The caller owns and closes the root.
+Encrypt a local secret with AES-256-GCM. The `directory` must already exist; `key` is a random 32-byte key loaded from a separate key manager. The caller owns the key and closes the root.
 
 ```go
 root, err := os.OpenRoot(directory)
@@ -46,30 +46,35 @@ if err != nil {
 }
 defer root.Close()
 
-reader, err := filesecret.New(root, map[string]string{
-	"DATABASE_USERNAME": "database-username",
-	"DATABASE_PASSWORD": "database-password",
+store, err := filesecret.NewStore(root, key, map[string]string{
+	"DATABASE_PASSWORD": "database-password.enc",
 })
 if err != nil {
 	panic(err)
 }
-
 ctx := context.Background()
-username, err := reader.Get(ctx, "DATABASE_USERNAME")
+if err := store.Set(ctx, "DATABASE_PASSWORD", "public-example-password"); err != nil {
+	panic(err)
+}
+password, err := store.Get(ctx, "DATABASE_PASSWORD")
 if err != nil {
 	panic(err)
 }
-password, err := reader.Get(ctx, "DATABASE_PASSWORD")
-if err != nil {
+// Pass password to your database client instead of logging it.
+_ = password
+fmt.Println("credential loaded")
+// Output: credential loaded
+
+if err := store.Delete(ctx, "DATABASE_PASSWORD"); err != nil {
 	panic(err)
 }
-// Pass both values directly to your database client. Keep them out of logs.
-_, _ = username, password
-fmt.Println("database credentials loaded")
-// Output: database credentials loaded
+fmt.Println("credential deleted")
+// Output: credential deleted
 ```
 
-Import `github.com/goforj/secret/driver/filesecret` for this example. The complete [runnable program](examples/files/main.go) creates a public fixture directory first. File confinement requires Go 1.25.12+, Go 1.26.5+, or stable Go 1.27+.
+Import `github.com/goforj/secret/driver/filesecret` for this example. The complete [runnable program](examples/encrypted/main.go) uses a disposable key and directory. For persistent data, retain the key outside the secret directory: losing it loses access to the values. File confinement requires Go 1.25.12+, Go 1.26.5+, or stable Go 1.27+.
+
+`NewStore` encrypts and authenticates values on disk. `New` is a separate, read-only **plaintext** reader for externally managed Docker and Kubernetes mounts. See [file encryption and key management](docs/drivers.md#encrypted-local-files).
 
 Each `Get` reads one binding. Reuse the reader and context for additional names; the same pattern works with every managed driver. Reads are independent, so values read together are not an atomic snapshot.
 
@@ -82,7 +87,7 @@ Application services can accept `secret.Reader`. Workflows that replace or delet
 <tbody>
 <tr><td><img src="docs/assets/badges/driver-icon-aws.svg" width="22" height="22" alt="" align="absmiddle"> <a href="driver/awssecret"><strong>AWS Secrets Manager</strong></a></td><td>Text or binary; standard recovery window</td><td>Moto 5.1.16 emulator</td></tr>
 <tr><td><img src="docs/assets/badges/driver-icon-azure.svg" width="22" height="22" alt="" align="absmiddle"> <a href="driver/azuresecret"><strong>Azure Key Vault</strong></a></td><td>UTF-8; vault-configured soft deletion</td><td>Lowkey Vault 7.4.0 emulator</td></tr>
-<tr><td><img src="docs/assets/badges/driver-icon-files.svg" width="22" height="22" alt="" align="absmiddle"> <a href="driver/filesecret"><strong>Mounted files</strong></a></td><td>Read exact bytes beneath a caller-owned root</td><td>Real filesystem and projected-volume tests</td></tr>
+<tr><td><img src="docs/assets/badges/driver-icon-files.svg" width="22" height="22" alt="" align="absmiddle"> <a href="driver/filesecret"><strong>Local files</strong></a></td><td>AES-256-GCM store; explicit plaintext mounted-file reader</td><td>Real filesystem, tampering, and projected-volume tests</td></tr>
 <tr><td><img src="docs/assets/badges/driver-icon-google.svg" width="22" height="22" alt="" align="absmiddle"> <a href="driver/gcpsecret"><strong>Google Secret Manager</strong></a></td><td>Binary values, CRC32C, and ETag deletion</td><td>Google Secret Manager emulator (pinned image)</td></tr>
 <tr><td><img src="docs/assets/badges/driver-icon-vault.svg" width="22" height="22" alt="" align="absmiddle"> <a href="driver/vaultsecret"><strong>Vault KV v2</strong></a></td><td>Owned scalar paths; CAS and all-version deletion</td><td>Real Vault 1.21.4 server</td></tr>
 </tbody>
@@ -98,7 +103,7 @@ The library is unreleased. To try it, clone the repository and use its local mod
 ```sh
 git clone https://github.com/goforj/secret.git
 cd secret
-go -C examples run ./files
+go -C examples run ./encrypted
 go -C examples run ./reader
 ```
 
@@ -110,7 +115,7 @@ The core has no external dependencies and requires Go 1.24.4. Optional modules i
 | github.com/goforj/secret/secrettest | 1.24.4 | Map-backed application test fixtures |
 | github.com/goforj/secret/driver/awssecret | 1.24.4 | AWS Secrets Manager |
 | github.com/goforj/secret/driver/azuresecret | 1.26.0 | Azure Key Vault |
-| github.com/goforj/secret/driver/filesecret | 1.25.12 | Mounted files |
+| github.com/goforj/secret/driver/filesecret | 1.25.12 | Encrypted local storage and plaintext mounted-file reads |
 | github.com/goforj/secret/driver/gcpsecret | 1.26.0 | Google Secret Manager |
 | github.com/goforj/secret/driver/vaultsecret | 1.26.0 | Vault KV v2 |
 
@@ -122,9 +127,9 @@ Import only the capabilities and drivers your application needs. Provider SDK de
 
 - **Exact values.** Values are ordinary strings. Reads preserve exact bytes within the provider's capabilities, without trimming, JSON parsing, environment fallback, caching, or rotation. Keep returned values out of logs and diagnostics.
 
-- **Writes and deletion.** Managed `Set` publishes a new current value at an existing resource. `Delete` targets the entire resource, including its versions, under the provider's retention policy. Vault deletion is irreversible. The file driver is read-only.
+- **Writes and deletion.** Managed `Set` publishes a new current value at an existing resource; encrypted-file `Set` can also create a bound file. `Delete` targets the entire resource under the provider's retention policy. Vault deletion is irreversible. File deletion removes ciphertext without promising secure erasure of disk blocks or backups.
 
-- **Concurrency.** Each first-party managed store serializes mutations to the same binding. Different bindings and reads can proceed concurrently. Mutable resources require [exclusive lifecycle ownership](docs/drivers.md), including across separate store instances.
+- **Concurrency.** Each first-party store serializes mutations to the same binding. Different bindings and reads can proceed concurrently. Mutable resources require [exclusive lifecycle ownership](docs/drivers.md), including across separate store instances.
 
 - **Retries.** Provider SDK retries remain caller-owned except Google version creation, where the driver disables automatic retries.
 
@@ -139,7 +144,8 @@ Import only the capabilities and drivers your application needs. Provider SDK de
 Run offline examples from the repository root:
 
 ```sh
-go -C examples run ./files             # Mounted files
+go -C examples run ./encrypted         # Encrypted files
+go -C examples run ./files             # Plaintext mounted files
 go -C examples run ./reader            # Reader adapter
 go -C examples run ./errors            # Uncertain writes
 go -C examples test -run TestStore -v   # Application tests
@@ -160,7 +166,7 @@ go -C examples run ./providers/vault -mount secret -path production/database-pas
 | Group | Functions |
 | --- | --- |
 | Core | [Func.Get](#reader-adapter) · [Reader.Get](#mounted-files) · [Store.Delete](#application-testing) · [Store.Set](#application-testing) · [Writer.Set](#mutation-errors) |
-| Driver Constructors | [awssecret.New](#aws-secrets) · [azuresecret.New](#azure-secrets) · [filesecret.New](#mounted-files) · [gcpsecret.New](#google-secrets) · [vaultsecret.New](#vault-secrets) |
+| Driver Constructors | [awssecret.New](#aws-secrets) · [azuresecret.New](#azure-secrets) · [filesecret.NewStore](#encrypted-files) · [filesecret.New](#mounted-files) · [gcpsecret.New](#google-secrets) · [vaultsecret.New](#vault-secrets) |
 | Errors | [ErrIndeterminate](#mutation-errors) · [ErrNotFound](#reader-adapter) |
 | Testing | [secrettest.New](#application-testing) |
 
@@ -168,6 +174,45 @@ go -C examples run ./providers/vault -mount secret -path production/database-pas
 ## Examples
 
 Provider snippets use resource identifiers from your application configuration. The complete programs accept those identifiers as command-line flags.
+
+<a id="encrypted-files"></a>
+
+### Store encrypted files
+
+[Complete source](examples/encrypted/main.go)
+
+```go
+root, err := os.OpenRoot(directory)
+if err != nil {
+	panic(err)
+}
+defer root.Close()
+
+store, err := filesecret.NewStore(root, key, map[string]string{
+	"DATABASE_PASSWORD": "database-password.enc",
+})
+if err != nil {
+	panic(err)
+}
+ctx := context.Background()
+if err := store.Set(ctx, "DATABASE_PASSWORD", "public-example-password"); err != nil {
+	panic(err)
+}
+password, err := store.Get(ctx, "DATABASE_PASSWORD")
+if err != nil {
+	panic(err)
+}
+// Pass password to your database client instead of logging it.
+_ = password
+fmt.Println("credential loaded")
+// Output: credential loaded
+
+if err := store.Delete(ctx, "DATABASE_PASSWORD"); err != nil {
+	panic(err)
+}
+fmt.Println("credential deleted")
+// Output: credential deleted
+```
 
 <a id="mounted-files"></a>
 

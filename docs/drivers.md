@@ -4,7 +4,7 @@ Application code uses `secret.Reader`, `secret.Writer`, `secret.Deleter`, or `se
 
 Managed mutations require exclusive lifecycle ownership: other actors must not delete, purge, recreate, repoint, or repurpose a bound resource concurrently. Native rotation that only publishes a new version remains allowed. Same-binding mutations serialize within one Store, including preflight and reconciliation. Cancellation while waiting makes no provider call and never returns `ErrIndeterminate`.
 
-The library never provisions resources. Configure policies, ownership, access grants, replication, retention, mounts, and clients explicitly outside it. Injected SDK clients and file roots remain caller-owned. SDK retry and logging settings are also caller-owned, except Google AddSecretVersion retries, which are disabled per call.
+Managed drivers never provision resources. Configure policies, ownership, access grants, replication, retention, mounts, and clients explicitly outside the library. The encrypted local store may create bound files inside an existing directory. Injected SDK clients, encryption keys, and file roots remain caller-owned. SDK retry and logging settings are also caller-owned, except Google AddSecretVersion retries, which are disabled per call.
 
 | Driver | Read selection | Value representation and limit | Whole-resource deletion |
 | --- | --- | --- | --- |
@@ -12,6 +12,7 @@ The library never provisions resources. Configure policies, ownership, access gr
 | Google | latest | Arbitrary bytes, 0 to 65,536 bytes; CRC32C required | ETag-protected secret and all versions |
 | Azure | Latest version | Valid UTF-8, 0 to 25,000 bytes | Vault-configured soft deletion |
 | Vault KV v2 | Latest version only | Valid UTF-8 scalar, 0 to 1 MiB | All versions and metadata, irreversible |
+| Encrypted local file | Authenticated ciphertext at each read | Arbitrary plaintext bytes, 0 to 1 MiB | Unlinks ciphertext; no secure-erasure guarantee |
 | Mounted file | Contents at each read | Arbitrary bytes, 0 to 1 MiB | Reader only |
 
 The portable intersection for managed writes is nonempty valid UTF-8 of at most 25,000 bytes. A successful driver operation preserves exactly the values supported by that provider. The library adds no cache, environment fallback, parsing, trimming, or automatic rotation.
@@ -89,9 +90,23 @@ Delete validates ownership metadata even when every data version is soft-deleted
 
 The caller owns Vault authentication and token renewal. The driver never logs in, renews credentials, or falls back to earlier versions.
 
+## Encrypted local files
+
+Import `github.com/goforj/secret/driver/filesecret` and call `filesecret.NewStore(root, key, bindings)`. The root is a caller-owned `*os.Root`, the key is exactly 32 random bytes, and bindings map application names to relative file paths. Identical paths are rejected. The store implements `secret.Store`; `Set` can create an absent bound file, but never creates parent directories. See the [runnable example](../examples/encrypted/main.go).
+
+**Encryption.** Every value is encrypted with standard-library AES-256-GCM and a fresh random 96-bit nonce. The application name and relative path are authenticated as associated data. Wrong keys, modified ciphertext, swapped bindings, unsupported versions, and plaintext files return `ErrUnavailable` without a value. Existing files must authenticate before replacement or deletion; there is no plaintext fallback or automatic migration. Stored data contains the version header, nonce, ciphertext, and authentication tag, with no plaintext values or key material.
+
+**Key ownership.** Supply a cryptographically random key from your application's key manager, OS credential store, or deployment secret system. The constructor copies key material into the cipher; it never saves or derives a key from a password. Keep the key outside the secret directory and its backups. Losing it loses access to the values; storing it beside the ciphertext defeats protection against directory theft. Follow Go's GCM limit of fewer than 2^32 encryptions per key across all instances. Rotate by reading with the old key and writing to a new directory with a new key, then explicitly switching configuration. Keep old keys only as required for retained backups.
+
+**Filesystem operations.** Use a private directory and trusted parent directories, with exclusive lifecycle ownership across processes. `Set` stages only ciphertext in a random, exclusively created 0600 file, flushes and closes it, then renames it over the bound path. Unix rename provides atomic replacement on local filesystems; the parent directory is synced after replacement and deletion. Windows directory syncing is unavailable through this API, and replacement is subject to the platform's `os.Rename` guarantees. Filesystem and power-loss durability remain platform-dependent. After a replacement or removal is attempted, errors conservatively include `ErrIndeterminate`; reconcile before retrying. Cancellation before publication leaves the existing value unchanged. Cleanup of ciphertext staging files is best effort after failures or crashes.
+
+**Protection boundaries.** Encryption protects stored values, not filenames, file sizes, access patterns, application memory, or a compromised process holding the key. It detects modification and cross-binding substitution, but cannot detect replay of an older valid ciphertext for the same binding. File deletion does not erase earlier blocks, snapshots, or backups. Local encryption does not replace filesystem permissions or full-disk encryption.
+
+The encrypted store uses the same confined path rules and patched toolchain requirements as mounted-file reads below. It adds no external dependencies or minimum Go version increase.
+
 ## Mounted files
 
-Import `github.com/goforj/secret/driver/filesecret` and pass a caller-owned `*os.Root`. Relative paths are at most 4,096 bytes and reject traversal components, backslashes, NUL, and platform-specific drive syntax. Contained symlinks are allowed for Kubernetes projected volumes. Aliases are harmless because this driver is read-only.
+`filesecret.New(root, bindings)` is explicitly a **plaintext, read-only** mounted-file reader, suitable for Docker secrets and Kubernetes projected volumes. It performs no encryption or decryption. Relative paths are at most 4,096 bytes and reject traversal components, backslashes, NUL, and platform-specific drive syntax. Contained symlinks are allowed for projected volumes. Aliases are harmless for these read-only bindings.
 
 Every Get opens once, stats that descriptor, requires a regular file, and reads at most 1 MiB plus one byte before rejecting oversize data. Unix opens use O_NONBLOCK so FIFOs cannot hang before the type check. Directories, sockets, devices, loops, and symlink escapes are unavailable. Missing files are not found and filesystem access denial is permission failure. Values are never trimmed.
 
@@ -125,3 +140,4 @@ The accepted [design](design.md) contains the complete classification and mutati
 - [Azure Key Vault Secrets](https://learn.microsoft.com/en-us/rest/api/keyvault/secrets)
 - [Vault KV v2](https://developer.hashicorp.com/vault/api-docs/secret/kv/kv-v2)
 - [Go os.Root](https://pkg.go.dev/os#Root)
+- [Go randomized-nonce GCM](https://pkg.go.dev/crypto/cipher#NewGCMWithRandomNonce)

@@ -368,14 +368,32 @@ import("context";"testing";"github.com/goforj/secret/secrettest")
 func TestConsumer(t *testing.T){store:=secrettest.New(t,map[string]string{"KEY":"public-fixture"});if err:=store.Set(context.Background(),"KEY","");err!=nil{t.Fatal(err)};if value,err:=store.Get(context.Background(),"KEY");err!=nil||value!=""{t.Fatal("store contract failed")}}
 `
 	}
+	if m.Package == "filesecret" {
+		return `package consumer
+import("bytes";"context";"errors";"os";"testing";"github.com/goforj/secret";"github.com/goforj/secret/driver/filesecret")
+var _ secret.Reader = (*filesecret.Reader)(nil)
+var _ secret.Store = (*filesecret.Store)(nil)
+// TestConsumer verifies encrypted persistence through the published API.
+func TestConsumer(t *testing.T){
+ if _,err:=filesecret.New(nil,nil);!errors.Is(err,secret.ErrInvalid){t.Fatal("reader constructor contract failed")}
+ root,err:=os.OpenRoot(t.TempDir());if err!=nil{t.Fatal(err)};defer root.Close()
+ key:=bytes.Repeat([]byte{42},32)
+ store,err:=filesecret.NewStore(root,key,map[string]string{"KEY":"key"});if err!=nil{t.Fatal(err)}
+ ctx:=context.Background()
+ if err:=store.Set(ctx,"KEY","public-fixture");err!=nil{t.Fatal(err)}
+ data,err:=root.ReadFile("key");if err!=nil||bytes.Contains(data,[]byte("public-fixture")){t.Fatal("plaintext storage")}
+ reopened,err:=filesecret.NewStore(root,key,map[string]string{"KEY":"key"});if err!=nil{t.Fatal(err)}
+ if value,err:=reopened.Get(ctx,"KEY");err!=nil||value!="public-fixture"{t.Fatal("encrypted persistence failed")}
+ if err:=reopened.Delete(ctx,"KEY");err!=nil{t.Fatal(err)}
+ if _,err:=store.Get(ctx,"KEY");!errors.Is(err,secret.ErrNotFound){t.Fatal("delete contract failed")}
+}
+`
+	}
 	args := "nil,nil"
 	if m.Package == "gcpsecret" {
 		args = `nil,"projects/public",nil`
 	}
 	capability := "Store"
-	if m.Package == "filesecret" {
-		capability = "Reader"
-	}
 	return fmt.Sprintf(`package consumer
 import("errors";"testing";"github.com/goforj/secret";"github.com/goforj/secret/%s")
 var _ secret.%s = (*%s.%s)(nil)

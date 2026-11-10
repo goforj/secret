@@ -10,6 +10,18 @@ which require Go 1.26 for Azure and Vault as well as the Google SDK stack. Core,
 The mounted-file module retains Go 1.25.12 and its per-branch confinement policy.
 See [provider contracts](drivers.md) for measured emulator limits and [development](development.md) for the current release tooling.
 
+### Encrypted local storage amendment
+
+Local persistent secret storage requires encryption at rest. `filesecret.NewStore(root, key, bindings)` implements `secret.Store` with caller-supplied 32-byte keys and standard-library AES-256-GCM. `filesecret.New` retains its existing plaintext mounted-file Reader contract; the two constructors never auto-detect or fall back between formats. This is an additive API change with no module-version, minimum-Go, or existing persisted-file migration requirement.
+
+The version 1 envelope is the bytes `goforj-secret`, NUL, byte 1, a random 12-byte nonce, ciphertext, and a 16-byte GCM tag. Associated data is the complete header followed by the application name, NUL, and the bound relative path. Values preserve arbitrary bytes up to 1 MiB. The format exposes neither the key nor the plaintext; filenames and value lengths remain visible. Authentication rejects wrong keys, changes, and cross-binding substitution. Replay of older valid ciphertext for the same binding is outside this format's guarantees.
+
+Only the encrypted local store may provision absent bound files. Parent directories remain caller-provisioned. Existing files must authenticate before mutation, so a wrong key or plaintext target cannot silently destroy data. Each store serializes same-binding mutations. Writes stage ciphertext in exclusively created private files, flush and close them, then replace the destination. Unix implementations sync the parent directory after replacement or deletion. Windows follows its platform rename and durability guarantees. Post-dispatch errors are indeterminate; prepublication cancellation leaves the destination unchanged. Cross-process and cross-instance lifecycle ownership remains the caller's responsibility.
+
+Key storage, recovery, access grants, and rotation are explicit deployment concerns. Keys must be generated randomly, stored separately from ciphertext, and replaced before 2^32 encryptions under one key. Rotation writes values through a new store into a separate directory; no constructor implicitly rewrites existing data. Plaintext migration likewise requires an explicit read through `New` and write through `NewStore` to a different directory. No operation promises secure erasure of old filesystem blocks or backups.
+
+This amendment extends the mounted-file-only scope in the original design below. See [encrypted file contracts](drivers.md#encrypted-local-files) for current behavior.
+
 ## Status
 
 - Design status: implementation-ready with provider error and release verification requirements

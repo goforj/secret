@@ -1,5 +1,5 @@
-// Package filesecret reads exact bytes beneath a caller-owned os.Root, including
-// Docker secrets and Kubernetes projected volumes. It requires Go 1.25.12+,
+// Package filesecret stores encrypted secrets or reads plaintext mounted files
+// beneath a caller-owned os.Root. It requires Go 1.25.12+,
 // Go 1.26.5+, or stable Go 1.27+ for the os.Root confinement security fix.
 package filesecret
 
@@ -13,7 +13,7 @@ import (
 	"strings"
 )
 
-// MaxFileBytes bounds each read, including files that grow during a read.
+// MaxFileBytes bounds plaintext values and mounted-file reads, including growing files.
 const MaxFileBytes = 1 << 20
 
 // Reader borrows its root and copies bindings. It supports concurrent reads.
@@ -22,7 +22,8 @@ type Reader struct {
 	bindings map[string]string
 }
 
-// New confines reads to root without taking ownership of its lifecycle.
+// New reads plaintext mounted files without encryption or lifecycle ownership.
+// Use NewStore for authenticated, encrypted local storage.
 func New(root *os.Root, bindings map[string]string) (*Reader, error) {
 	if root == nil || len(bindings) == 0 || !supported() {
 		return nil, secret.ErrInvalid
@@ -77,12 +78,17 @@ type descriptor interface {
 
 // read rejects nonregular or growing files without exposing partial secret bytes.
 func read(ctx context.Context, file descriptor) (string, error) {
+	return readLimit(ctx, file, MaxFileBytes)
+}
+
+// readLimit bounds ciphertext as well as plaintext without returning partial data.
+func readLimit(ctx context.Context, file descriptor, limit int) (string, error) {
 	info, err := file.Stat()
 	if err != nil || !info.Mode().IsRegular() {
 		return "", failure(ctx, secret.ErrUnavailable)
 	}
-	data, err := io.ReadAll(io.LimitReader(file, MaxFileBytes+1))
-	if err != nil || len(data) > MaxFileBytes {
+	data, err := io.ReadAll(io.LimitReader(file, int64(limit)+1))
+	if err != nil || len(data) > limit {
 		return "", failure(ctx, secret.ErrUnavailable)
 	}
 	if err := ctx.Err(); err != nil {
