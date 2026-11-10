@@ -8,7 +8,7 @@
   <a href="LICENSE"><img src="docs/assets/badges/summary-license.svg" alt="License: MIT"></a>
   <a href="https://go.dev"><img src="docs/assets/badges/summary-go.svg" alt="Go: 1.24.4+"></a>
   <img src="docs/assets/badges/summary-status.svg" alt="Status: unreleased">
-  <img src="docs/assets/badges/summary-coverage.svg" alt="Library unit coverage: 100%">
+  <a href="https://app.codecov.io/gh/goforj/secret"><img src="docs/assets/badges/summary-coverage.svg" alt="Library unit coverage: 100%"></a>
   <img src="docs/assets/badges/summary-tests.svg" alt="Executed library unit tests">
 </p>
 

@@ -66,4 +66,4 @@ After each authorized publication, run `make release-published VERSION=vX.Y.Z MO
 
 ## GitHub integration
 
-CI checks formatting, tidy parity, complete module inventory, unit coverage, executable examples, race behavior, vet, generated parity, platform confinement, and disposable integrations. Security scans run on stable patched Go. Codecov upload is conditional on repository variable `CODECOV_ENABLED=true` and the repository's own upload token; this checkout does not assume external app setup is complete.
+CI checks formatting, tidy parity, complete module inventory, unit coverage, executable examples, race behavior, vet, generated parity, platform confinement, and disposable integrations. Security scans run on stable patched Go. The quality job uploads the complete unit report to Codecov using GitHub OIDC, with upload failures failing CI. No repository upload token or enablement variable is required. Codecov project and patch checks use the `unit` flag, require 100% coverage, and disable carryforward. The Codecov GitHub App must have repository access for its GitHub integration.
