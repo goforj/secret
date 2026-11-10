@@ -36,6 +36,8 @@ Import `github.com/goforj/secret/driver/filesecret` for this example. The comple
 
 `NewStore` encrypts and authenticates values on disk. `New` is a separate, read-only **plaintext** reader for externally managed Docker and Kubernetes mounts. See [file encryption and key management](docs/drivers.md#encrypted-local-files).
 
+For key rotation, `NewStoreWithKeys(root, currentKey, bindings, previousKeys...)` reads with current or previous keys and always writes with the current key. Call `store.Rotate(ctx)` to migrate existing files; [see the example](#rotate-files).
+
 Each `Get` reads one binding. Reuse the reader and context for additional names; the same pattern works with every managed driver. Reads are independent, so values read together are not an atomic snapshot.
 
 Application services can accept `secret.Reader`. Workflows that replace or delete values can accept `secret.Writer`, `secret.Deleter`, or `secret.Store`.
@@ -95,6 +97,7 @@ Run offline examples from the repository root:
 
 ```sh
 go -C examples run ./encrypted         # Encrypted files
+go -C examples run ./rotation          # Encryption key rotation
 go -C examples run ./files             # Plaintext mounted files
 go -C examples run ./reader            # Reader adapter
 go -C examples run ./errors            # Uncertain writes

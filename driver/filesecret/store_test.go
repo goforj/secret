@@ -121,6 +121,10 @@ func TestEncryptedCancellationCheckpoints(t *testing.T) {
 	if value, err := store.Get(lateRead, "KEY"); value != "" || !errors.Is(err, context.Canceled) {
 		t.Fatal("canceled read returned plaintext", err)
 	}
+	afterDecrypt := &checkpointContext{Context: ctx, cancelAt: 4}
+	if value, err := store.Get(afterDecrypt, "KEY"); value != "" || !errors.Is(err, context.Canceled) {
+		t.Fatal("decryption returned plaintext after cancellation", err)
+	}
 	beforeGate := &checkpointContext{Context: ctx, cancelAt: 2}
 	if err := store.Delete(beforeGate, "KEY"); !errors.Is(err, context.Canceled) {
 		t.Fatal(err)

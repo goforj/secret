@@ -76,6 +76,8 @@ Import `github.com/goforj/secret/driver/filesecret` for this example. The comple
 
 `NewStore` encrypts and authenticates values on disk. `New` is a separate, read-only **plaintext** reader for externally managed Docker and Kubernetes mounts. See [file encryption and key management](docs/drivers.md#encrypted-local-files).
 
+For key rotation, `NewStoreWithKeys(root, currentKey, bindings, previousKeys...)` reads with current or previous keys and always writes with the current key. Call `store.Rotate(ctx)` to migrate existing files; [see the example](#rotate-files).
+
 Each `Get` reads one binding. Reuse the reader and context for additional names; the same pattern works with every managed driver. Reads are independent, so values read together are not an atomic snapshot.
 
 Application services can accept `secret.Reader`. Workflows that replace or delete values can accept `secret.Writer`, `secret.Deleter`, or `secret.Store`.
@@ -145,6 +147,7 @@ Run offline examples from the repository root:
 
 ```sh
 go -C examples run ./encrypted         # Encrypted files
+go -C examples run ./rotation          # Encryption key rotation
 go -C examples run ./files             # Plaintext mounted files
 go -C examples run ./reader            # Reader adapter
 go -C examples run ./errors            # Uncertain writes
@@ -165,8 +168,8 @@ go -C examples run ./providers/vault -mount secret -path production/database-pas
 
 | Group | Functions |
 | --- | --- |
-| Core | [Func.Get](#reader-adapter) · [Reader.Get](#mounted-files) · [Store.Delete](#application-testing) · [Store.Set](#application-testing) · [Writer.Set](#mutation-errors) |
-| Driver Constructors | [awssecret.New](#aws-secrets) · [azuresecret.New](#azure-secrets) · [filesecret.NewStore](#encrypted-files) · [filesecret.New](#mounted-files) · [gcpsecret.New](#google-secrets) · [vaultsecret.New](#vault-secrets) |
+| Core | [Func.Get](#reader-adapter) · [Reader.Get](#mounted-files) · [Store.Delete](#application-testing) · [Store.Set](#application-testing) · [Writer.Set](#mutation-errors) · [filesecret.Store.Rotate](#rotate-files) |
+| Driver Constructors | [awssecret.New](#aws-secrets) · [azuresecret.New](#azure-secrets) · [filesecret.NewStoreWithKeys](#rotate-files) · [filesecret.NewStore](#encrypted-files) · [filesecret.New](#mounted-files) · [gcpsecret.New](#google-secrets) · [vaultsecret.New](#vault-secrets) |
 | Errors | [ErrIndeterminate](#mutation-errors) · [ErrNotFound](#reader-adapter) |
 | Testing | [secrettest.New](#application-testing) |
 
@@ -212,6 +215,41 @@ if err := store.Delete(ctx, "DATABASE_PASSWORD"); err != nil {
 }
 fmt.Println("credential deleted")
 // Output: credential deleted
+```
+
+<a id="rotate-files"></a>
+
+### Rotate encryption keys
+
+[Complete source](examples/rotation/main.go)
+
+```go
+store, err := filesecret.NewStoreWithKeys(root, currentKey, bindings, previousKey)
+if err != nil {
+	panic(err)
+}
+ctx := context.Background()
+if _, err := store.Get(ctx, "DATABASE_PASSWORD"); err != nil {
+	panic(err)
+}
+fmt.Println("old-key credential readable")
+// Output: old-key credential readable
+
+if err := store.Rotate(ctx); err != nil {
+	panic(err)
+}
+fmt.Println("files rotated")
+// Output: files rotated
+
+currentOnly, err := filesecret.NewStore(root, currentKey, bindings)
+if err != nil {
+	panic(err)
+}
+if _, err := currentOnly.Get(ctx, "DATABASE_PASSWORD"); err != nil {
+	panic(err)
+}
+fmt.Println("credential readable without previous key")
+// Output: credential readable without previous key
 ```
 
 <a id="mounted-files"></a>

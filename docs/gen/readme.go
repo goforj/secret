@@ -22,6 +22,7 @@ type Example struct {
 // Examples indexes canonical application workflows and provider construction.
 var Examples = []Example{
 	{"encrypted-files", "Store encrypted files", "examples/encrypted/main.go", []string{"filesecret.NewStore"}},
+	{"rotate-files", "Rotate encryption keys", "examples/rotation/main.go", []string{"filesecret.NewStoreWithKeys", "filesecret.Store.Rotate"}},
 	{"mounted-files", "Read mounted files", "examples/files/main.go", []string{"filesecret.New", "Reader.Get"}},
 	{"aws-secrets", "Read from AWS Secrets Manager", "examples/providers/aws/main.go", []string{"awssecret.New"}},
 	{"google-secrets", "Read from Google Secret Manager", "examples/providers/gcp/main.go", []string{"gcpsecret.New"}},
@@ -62,7 +63,7 @@ func symbolExists(root, symbol string) bool {
 	parts := strings.Split(symbol, ".")
 	pkg := ""
 	name := parts[len(parts)-1]
-	if len(parts) == 2 {
+	if len(parts) >= 2 {
 		pkg = parts[0]
 	}
 	directory := root
@@ -134,7 +135,7 @@ func ExampleSections(root string) (string, string, error) {
 				group = "Errors"
 			case strings.HasPrefix(symbol, "secrettest."):
 				group = "Testing"
-			case strings.HasSuffix(symbol, ".New") || symbol == "filesecret.NewStore":
+			case strings.HasSuffix(symbol, ".New") || strings.HasPrefix(symbol, "filesecret.New"):
 				group = "Driver Constructors"
 			}
 			groups[group] = append(groups[group], fmt.Sprintf("[%s](#%s)", symbol, example.ID))

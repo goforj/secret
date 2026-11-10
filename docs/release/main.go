@@ -382,7 +382,11 @@ func TestConsumer(t *testing.T){
  ctx:=context.Background()
  if err:=store.Set(ctx,"KEY","public-fixture");err!=nil{t.Fatal(err)}
  data,err:=root.ReadFile("key");if err!=nil||bytes.Contains(data,[]byte("public-fixture")){t.Fatal("plaintext storage")}
- reopened,err:=filesecret.NewStore(root,key,map[string]string{"KEY":"key"});if err!=nil{t.Fatal(err)}
+ next:=bytes.Repeat([]byte{43},32)
+ rotating,err:=filesecret.NewStoreWithKeys(root,next,map[string]string{"KEY":"key"},key);if err!=nil{t.Fatal(err)}
+ if value,err:=rotating.Get(ctx,"KEY");err!=nil||value!="public-fixture"{t.Fatal("previous-key read failed")}
+ if err:=rotating.Rotate(ctx);err!=nil{t.Fatal(err)}
+ reopened,err:=filesecret.NewStore(root,next,map[string]string{"KEY":"key"});if err!=nil{t.Fatal(err)}
  if value,err:=reopened.Get(ctx,"KEY");err!=nil||value!="public-fixture"{t.Fatal("encrypted persistence failed")}
  if err:=reopened.Delete(ctx,"KEY");err!=nil{t.Fatal(err)}
  if _,err:=store.Get(ctx,"KEY");!errors.Is(err,secret.ErrNotFound){t.Fatal("delete contract failed")}
