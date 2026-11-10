@@ -143,7 +143,7 @@ Import only the capabilities and drivers your application needs. Provider SDK de
 
 ## Runnable Examples
 
-Run offline examples from the repository root:
+Run from the repository root. No credentials required:
 
 ```sh
 go -C examples run ./encrypted         # Encrypted files
@@ -154,22 +154,7 @@ go -C examples run ./errors            # Uncertain writes
 go -C examples test -run TestStore -v   # Application tests
 ```
 
-Read existing encrypted files with a [persistent key file](docs/drivers.md#persistent-keys-and-recovery):
-
-```sh
-go -C examples run ./configured/persistent \
-  -directory /var/lib/myapp/secrets -key-file /run/secrets/myapp-master.key
-```
-
-Managed examples require [provider authentication](docs/drivers.md#running-provider-examples) and existing secrets. Replace the sample identifiers:
-
-```sh
-go -C examples run ./providers/aws \
-  -arn arn:aws:secretsmanager:us-east-1:123456789012:secret:production/database-AbCdEf
-go -C examples run ./providers/gcp -parent projects/my-project -secret database-password
-go -C examples run ./providers/azure -vault https://my-vault.vault.azure.net/ -secret database-password
-go -C examples run ./providers/vault -mount secret -path production/database-password
-```
+Configured examples: [persistent keys](docs/drivers.md#persistent-keys-and-recovery) · [managed providers](docs/drivers.md#running-provider-examples).
 
 ## API Index
 

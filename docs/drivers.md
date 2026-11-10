@@ -144,6 +144,16 @@ The programs under `examples/providers/` authenticate through their provider SDK
 
 Grant read access to the selected resources. Vault documents must have the scalar shape `{"value":"..."}`. Normal tests compile these programs without accessing credentials or services; hosted example runs remain unverified.
 
+Run from the repository root after configuring authentication, replacing the sample resource identifiers:
+
+```sh
+go -C examples run ./providers/aws \
+  -arn arn:aws:secretsmanager:us-east-1:123456789012:secret:production/database-AbCdEf
+go -C examples run ./providers/gcp -parent projects/my-project -secret database-password
+go -C examples run ./providers/azure -vault https://my-vault.vault.azure.net/ -secret database-password
+go -C examples run ./providers/vault -mount secret -path production/database-password
+```
+
 ## Verification boundaries
 
 All drivers have independent unit contract suites. SDK errors are tested with unsafe fixture prose and must not survive in returned error graphs. Unit statements are measured independently of integrations.
