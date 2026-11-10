@@ -86,17 +86,21 @@ Every program is executed by the shared example runner and checked against the o
 
 ## Behavior
 
-Names follow `[A-Z][A-Z0-9_]*`, with a maximum of 255 bytes. Names are opaque application identifiers such as `DATABASE_PASSWORD`. Bindings are copied at construction, and unknown names never reach a provider.
+- **Names and bindings.** Names follow `[A-Z][A-Z0-9_]*`, with a maximum of 255 bytes. Use application identifiers such as `DATABASE_PASSWORD`. Bindings are copied at construction, and unknown names never reach a provider.
 
-Values are ordinary strings. Reads preserve exact bytes within the provider's capabilities. No trimming, JSON parsing, automatic environment fallback, caching, or rotation is added. Returned strings belong to the caller and must stay out of logs and diagnostics.
+- **Exact values.** Values are ordinary strings. Reads preserve exact bytes within the provider's capabilities, without trimming, JSON parsing, environment fallback, caching, or rotation. Keep returned values out of logs and diagnostics.
 
-`Set` publishes a new current value at an existing resource. `Delete` targets the entire resource using its provider's retention policy. A Store serializes same-binding mutations; different bindings and reads can proceed concurrently. Mutable bindings require exclusive lifecycle ownership. Provider SDK retries remain caller-owned except Google version creation, where the driver disables automatic retries.
+- **Writes and deletion.** `Set` publishes a new current value at an existing resource. `Delete` targets the entire resource using its provider's retention policy.
 
-Errors support `errors.Is` with `ErrInvalid`, `ErrNotFound`, `ErrPermission`, `ErrUnavailable`, and `ErrIndeterminate`. An indeterminate mutation may have committed; reconcile before retrying. Caller cancellation remains detectable, including alongside `ErrIndeterminate`. Provider errors and response bodies are never retained in the public error graph.
+- **Concurrency.** A Store serializes mutations to the same binding. Different bindings and reads can proceed concurrently. Mutable bindings require exclusive lifecycle ownership.
 
-Check `ErrIndeterminate` before cancellation or deadline errors when handling a failed mutation. A canceled request can still have committed remotely. The [uncertain-write example](#mutation-errors) demonstrates this ordering without contacting a provider.
+- **Retries.** Provider SDK retries remain caller-owned except Google version creation, where the driver disables automatic retries.
 
-Constructing code owns the SDK client or file root. Drivers borrow them and never close them. Review SDK logging separately: first-party drivers do not log, but injected client logging can disclose provider metadata.
+- **Safe failures.** Errors support `errors.Is` with `ErrInvalid`, `ErrNotFound`, `ErrPermission`, `ErrUnavailable`, and `ErrIndeterminate`. Provider errors and response bodies are never retained in the public error graph.
+
+- **Uncertain writes.** Check `ErrIndeterminate` before cancellation or deadline errors. A canceled mutation may still have committed remotely, so reconcile before retrying. Caller cancellation remains detectable alongside `ErrIndeterminate`. See the [uncertain-write example](#mutation-errors).
+
+- **Client ownership.** Constructing code owns the SDK client or file root. Drivers borrow them and never close them. First-party drivers do not log; review injected client logging separately because it can disclose provider metadata.
 
 ## Development
 
