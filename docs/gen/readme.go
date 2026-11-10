@@ -18,15 +18,19 @@ type Example struct {
 	Symbols         []string
 }
 
-// Examples is the curated consumer-facing API index, separate from provider plumbing.
+// Examples indexes canonical application workflows and provider construction.
 var Examples = []Example{
 	{"mounted-files", "Read mounted files", "examples/files/main.go", []string{"filesecret.New", "Reader.Get"}},
+	{"aws-secrets", "Read from AWS Secrets Manager", "examples/providers/aws/main.go", []string{"awssecret.New"}},
+	{"google-secrets", "Read from Google Secret Manager", "examples/providers/gcp/main.go", []string{"gcpsecret.New"}},
+	{"azure-secrets", "Read from Azure Key Vault", "examples/providers/azure/main.go", []string{"azuresecret.New"}},
+	{"vault-secrets", "Read from Vault KV v2", "examples/providers/vault/main.go", []string{"vaultsecret.New"}},
 	{"reader-adapter", "Adapt an existing reader", "examples/reader/main.go", []string{"Func.Get", "ErrNotFound"}},
 	{"mutation-errors", "Handle an uncertain write", "examples/errors/main.go", []string{"Writer.Set", "ErrIndeterminate"}},
 	{"application-testing", "Test replacements and deletion", "examples/testing_test.go", []string{"secrettest.New", "Store.Set", "Store.Delete"}},
 }
 
-// Snippet extracts a single marked workflow and requires nearby checked output.
+// Snippet extracts a single marked workflow and requires nearby expected output.
 func Snippet(root, path string) (string, error) {
 	data, err := os.ReadFile(filepath.Join(root, path))
 	if err != nil {
@@ -44,8 +48,9 @@ func Snippet(root, path string) (string, error) {
 		return "", fmt.Errorf("missing expected output in %s", path)
 	}
 	lines := strings.Split(strings.Trim(source, "\n"), "\n")
+	indent := lines[0][:len(lines[0])-len(strings.TrimLeft(lines[0], "\t"))]
 	for i, line := range lines {
-		lines[i] = strings.TrimPrefix(line, "\t")
+		lines[i] = strings.TrimPrefix(line, indent)
 	}
 	return strings.TrimSpace(strings.Join(lines, "\n")), nil
 }
@@ -62,6 +67,8 @@ func symbolExists(root, symbol string) bool {
 	switch pkg {
 	case "filesecret":
 		directory = filepath.Join(root, "driver/filesecret")
+	case "awssecret", "azuresecret", "gcpsecret", "vaultsecret":
+		directory = filepath.Join(root, "driver", pkg)
 	case "secrettest":
 		directory = filepath.Join(root, "secrettest")
 	}
@@ -121,7 +128,7 @@ func ExampleSections(root string) (string, string, error) {
 			}
 			fmt.Fprintf(&index, "| [%s](#%s) | %s |\n", symbol, example.ID, example.Title)
 		}
-		fmt.Fprintf(&examples, "<a id=\"%s\"></a>\n\n### %s\n\n```go\n%s\n```\n\n", example.ID, example.Title, snippet)
+		fmt.Fprintf(&examples, "<a id=\"%s\"></a>\n\n### %s\n\n[Complete source](%s)\n\n```go\n%s\n```\n\n", example.ID, example.Title, example.Path, snippet)
 	}
 	return index.String(), examples.String(), nil
 }

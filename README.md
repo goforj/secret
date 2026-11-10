@@ -115,7 +115,22 @@ Development replacements intentionally exercise unpublished sibling modules. Rel
 | [Uncertain writes](examples/errors/main.go) | `go -C examples run ./errors` |
 | [Application tests](examples/testing_test.go) | `go -C examples test -run TestStore -v` |
 
-Every program is executed by the shared example runner and checked against the output comments beside its calls. Test fixtures use public placeholder values.
+These offline programs are executed by the shared example runner and checked against the output comments beside their calls. Test fixtures use public placeholder values.
+
+### Managed providers
+
+Each program below shows SDK authentication, client construction, bindings, and a read of an existing secret. They print `credential loaded` on success and keep the value out of the output. Configure the provider credentials and read permissions before running one. These examples do not create, replace, or delete resources.
+
+| Provider | Authentication | Run from this checkout |
+| --- | --- | --- |
+| [AWS Secrets Manager](examples/providers/aws/main.go) | AWS default credential chain and configured region, including profiles or workload roles | `go -C examples run ./providers/aws -arn arn:aws:secretsmanager:us-east-1:123456789012:secret:production/database-AbCdEf` |
+| [Google Secret Manager](examples/providers/gcp/main.go) | Application Default Credentials | `go -C examples run ./providers/gcp -parent projects/my-project -secret database-password` |
+| [Azure Key Vault](examples/providers/azure/main.go) | DefaultAzureCredential, including Azure CLI or managed identity | `go -C examples run ./providers/azure -vault https://my-vault.vault.azure.net/ -secret database-password` |
+| [Vault KV v2](examples/providers/vault/main.go) | `VAULT_ADDR`, `VAULT_TOKEN`, and optional Vault SDK TLS and namespace settings | `go -C examples run ./providers/vault -mount secret -path production/database-password` |
+
+Replace the public resource identifiers with your own. Vault documents must have the scalar shape `{"value":"..."}`; see [provider contracts](docs/drivers.md#vault-kv-v2) for ownership requirements before enabling writes. The complete programs include imports and command-line flags; their SDK setup and read workflows also appear below.
+
+The examples module requires Go 1.26 because it imports every managed driver. Normal tests compile these provider programs without accessing credentials or services. Provider runs are explicit, and their success output has not been verified against hosted accounts.
 
 ## API Index
 
@@ -123,6 +138,10 @@ Every program is executed by the shared example runner and checked against the o
 | --- | --- |
 | [filesecret.New](#mounted-files) | Read mounted files |
 | [Reader.Get](#mounted-files) | Read mounted files |
+| [awssecret.New](#aws-secrets) | Read from AWS Secrets Manager |
+| [gcpsecret.New](#google-secrets) | Read from Google Secret Manager |
+| [azuresecret.New](#azure-secrets) | Read from Azure Key Vault |
+| [vaultsecret.New](#vault-secrets) | Read from Vault KV v2 |
 | [Func.Get](#reader-adapter) | Adapt an existing reader |
 | [ErrNotFound](#reader-adapter) | Adapt an existing reader |
 | [Writer.Set](#mutation-errors) | Handle an uncertain write |
@@ -137,6 +156,8 @@ Every program is executed by the shared example runner and checked against the o
 <a id="mounted-files"></a>
 
 ### Read mounted files
+
+[Complete source](examples/files/main.go)
 
 ```go
 root, err := os.OpenRoot(directory)
@@ -162,9 +183,149 @@ fmt.Println("credential loaded")
 // Output: credential loaded
 ```
 
+<a id="aws-secrets"></a>
+
+### Read from AWS Secrets Manager
+
+[Complete source](examples/providers/aws/main.go)
+
+```go
+// run binds an application name without exposing the retrieved credential.
+func run(arn string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	cfg, err := config.LoadDefaultConfig(ctx)
+	if err != nil {
+		return err
+	}
+	client := secretsmanager.NewFromConfig(cfg)
+	store, err := awssecret.New(client, map[string]awssecret.Binding{
+		"DATABASE_PASSWORD": {ARN: arn, Encoding: awssecret.Text},
+	})
+	if err != nil {
+		return err
+	}
+	password, err := store.Get(ctx, "DATABASE_PASSWORD")
+	if err != nil {
+		return err
+	}
+	// Pass password to your database client instead of logging it.
+	_ = password
+	fmt.Println("credential loaded")
+	// Output: credential loaded
+	return nil
+}
+```
+
+<a id="google-secrets"></a>
+
+### Read from Google Secret Manager
+
+[Complete source](examples/providers/gcp/main.go)
+
+```go
+// run owns and closes the SDK client borrowed by the driver.
+func run(parent, id string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	client, err := secretmanager.NewClient(ctx)
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+	store, err := gcpsecret.New(client, parent, map[string]string{
+		"DATABASE_PASSWORD": id,
+	})
+	if err != nil {
+		return err
+	}
+	password, err := store.Get(ctx, "DATABASE_PASSWORD")
+	if err != nil {
+		return err
+	}
+	// Pass password to your database client instead of logging it.
+	_ = password
+	fmt.Println("credential loaded")
+	// Output: credential loaded
+	return nil
+}
+```
+
+<a id="azure-secrets"></a>
+
+### Read from Azure Key Vault
+
+[Complete source](examples/providers/azure/main.go)
+
+```go
+// run lets the SDK select a configured development or workload identity.
+func run(vault, name string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	credential, err := azidentity.NewDefaultAzureCredential(nil)
+	if err != nil {
+		return err
+	}
+	client, err := azsecrets.NewClient(vault, credential, nil)
+	if err != nil {
+		return err
+	}
+	store, err := azuresecret.New(client, map[string]azuresecret.Binding{
+		"DATABASE_PASSWORD": {Name: name},
+	})
+	if err != nil {
+		return err
+	}
+	password, err := store.Get(ctx, "DATABASE_PASSWORD")
+	if err != nil {
+		return err
+	}
+	// Pass password to your database client instead of logging it.
+	_ = password
+	fmt.Println("credential loaded")
+	// Output: credential loaded
+	return nil
+}
+```
+
+<a id="vault-secrets"></a>
+
+### Read from Vault KV v2
+
+[Complete source](examples/providers/vault/main.go)
+
+```go
+// run borrows a KV v2 client without taking over authentication or token renewal.
+func run(mount, path string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	client, err := api.NewClient(nil)
+	if err != nil {
+		return err
+	}
+	store, err := vaultsecret.New(client.KVv2(mount), map[string]string{
+		"DATABASE_PASSWORD": path,
+	})
+	if err != nil {
+		return err
+	}
+	password, err := store.Get(ctx, "DATABASE_PASSWORD")
+	if err != nil {
+		return err
+	}
+	// Pass password to your database client instead of logging it.
+	_ = password
+	fmt.Println("credential loaded")
+	// Output: credential loaded
+	return nil
+}
+```
+
 <a id="reader-adapter"></a>
 
 ### Adapt an existing reader
+
+[Complete source](examples/reader/main.go)
 
 ```go
 reader := secret.Func(func(ctx context.Context, name string) (string, error) {
@@ -187,6 +348,8 @@ fmt.Println("missing:", errors.Is(err, secret.ErrNotFound))
 
 ### Handle an uncertain write
 
+[Complete source](examples/errors/main.go)
+
 ```go
 err := writer.Set(context.Background(), "DATABASE_PASSWORD", "public-replacement")
 if errors.Is(err, secret.ErrIndeterminate) {
@@ -203,6 +366,8 @@ fmt.Println("deadline still detectable:", errors.Is(err, context.DeadlineExceede
 <a id="application-testing"></a>
 
 ### Test replacements and deletion
+
+[Complete source](examples/testing_test.go)
 
 ```go
 store := secrettest.New(t, map[string]string{

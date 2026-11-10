@@ -74,7 +74,22 @@ Development replacements intentionally exercise unpublished sibling modules. Rel
 | [Uncertain writes](examples/errors/main.go) | `go -C examples run ./errors` |
 | [Application tests](examples/testing_test.go) | `go -C examples test -run TestStore -v` |
 
-Every program is executed by the shared example runner and checked against the output comments beside its calls. Test fixtures use public placeholder values.
+These offline programs are executed by the shared example runner and checked against the output comments beside their calls. Test fixtures use public placeholder values.
+
+### Managed providers
+
+Each program below shows SDK authentication, client construction, bindings, and a read of an existing secret. They print `credential loaded` on success and keep the value out of the output. Configure the provider credentials and read permissions before running one. These examples do not create, replace, or delete resources.
+
+| Provider | Authentication | Run from this checkout |
+| --- | --- | --- |
+| [AWS Secrets Manager](examples/providers/aws/main.go) | AWS default credential chain and configured region, including profiles or workload roles | `go -C examples run ./providers/aws -arn arn:aws:secretsmanager:us-east-1:123456789012:secret:production/database-AbCdEf` |
+| [Google Secret Manager](examples/providers/gcp/main.go) | Application Default Credentials | `go -C examples run ./providers/gcp -parent projects/my-project -secret database-password` |
+| [Azure Key Vault](examples/providers/azure/main.go) | DefaultAzureCredential, including Azure CLI or managed identity | `go -C examples run ./providers/azure -vault https://my-vault.vault.azure.net/ -secret database-password` |
+| [Vault KV v2](examples/providers/vault/main.go) | `VAULT_ADDR`, `VAULT_TOKEN`, and optional Vault SDK TLS and namespace settings | `go -C examples run ./providers/vault -mount secret -path production/database-password` |
+
+Replace the public resource identifiers with your own. Vault documents must have the scalar shape `{"value":"..."}`; see [provider contracts](docs/drivers.md#vault-kv-v2) for ownership requirements before enabling writes. The complete programs include imports and command-line flags; their SDK setup and read workflows also appear below.
+
+The examples module requires Go 1.26 because it imports every managed driver. Normal tests compile these provider programs without accessing credentials or services. Provider runs are explicit, and their success output has not been verified against hosted accounts.
 
 ## API Index
 

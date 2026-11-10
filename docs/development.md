@@ -4,7 +4,9 @@
 
 `secret.go` owns the framework-independent capabilities, adapter, and classifications. Independently versioned drivers own their private validation and safe-error helpers. No driver imports root internal packages. `secrettest` is a separate module so normal consumers do not import testing helpers.
 
-Canonical runnable programs live under `examples/`. Their output expectations sit immediately after the producing call. `examples/run_test.go` discovers all programs, builds them with coverage instrumentation, carries race instrumentation into child programs, executes them, and verifies output. Set `SECRET_EXAMPLE_COVERDIR` to an existing directory to retain child coverage data.
+Canonical offline programs live directly under `examples/*/`. Their output expectations sit immediately after the producing call. `examples/run_test.go` discovers these programs, builds them with coverage instrumentation, carries race instrumentation into child programs, executes them, and verifies output. Set `SECRET_EXAMPLE_COVERDIR` to an existing directory to retain child coverage data.
+
+Managed provider programs live under `examples/providers/`. Normal module tests compile them without accessing credentials or services. Run them explicitly with your provider's authentication and existing resources, using the commands in the README. Hosted output remains unverified. The examples module requires Go 1.26 to compile all managed drivers; it does not change the library modules' minimum Go versions.
 
 The README is generated from `docs/readme/README.md.tmpl`, curated API metadata, and executable example snippets. SVG badges are generated in Go. Feature and driver names remain real text for browser search; icons use distinct filenames and sit outside name links.
 
