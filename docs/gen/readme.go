@@ -9,6 +9,7 @@ import (
 	"html"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -116,7 +117,7 @@ func symbolExists(root, symbol string) bool {
 // ExampleSections keeps the API index and examples anchored to one implementation.
 func ExampleSections(root string) (string, string, error) {
 	var index, examples strings.Builder
-	index.WriteString("| API | Example |\n| --- | --- |\n")
+	groups := make(map[string][]string)
 	for _, example := range Examples {
 		snippet, err := Snippet(root, example.Path)
 		if err != nil {
@@ -126,9 +127,23 @@ func ExampleSections(root string) (string, string, error) {
 			if !symbolExists(root, symbol) {
 				return "", "", fmt.Errorf("unknown indexed API %s", symbol)
 			}
-			fmt.Fprintf(&index, "| [%s](#%s) | %s |\n", symbol, example.ID, example.Title)
+			group := "Core"
+			switch {
+			case strings.HasPrefix(symbol, "Err"):
+				group = "Errors"
+			case strings.HasPrefix(symbol, "secrettest."):
+				group = "Testing"
+			case strings.HasSuffix(symbol, ".New"):
+				group = "Driver Constructors"
+			}
+			groups[group] = append(groups[group], fmt.Sprintf("[%s](#%s)", symbol, example.ID))
 		}
 		fmt.Fprintf(&examples, "<a id=\"%s\"></a>\n\n### %s\n\n[Complete source](%s)\n\n```go\n%s\n```\n\n", example.ID, example.Title, example.Path, snippet)
+	}
+	index.WriteString("| Group | Functions |\n| --- | --- |\n")
+	for _, group := range []string{"Core", "Driver Constructors", "Errors", "Testing"} {
+		sort.Strings(groups[group])
+		fmt.Fprintf(&index, "| %s | %s |\n", group, strings.Join(groups[group], " · "))
 	}
 	return index.String(), examples.String(), nil
 }

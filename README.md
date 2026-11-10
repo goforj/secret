@@ -157,21 +157,12 @@ go -C examples run ./providers/vault -mount secret -path production/database-pas
 
 ## API Index
 
-| API | Example |
+| Group | Functions |
 | --- | --- |
-| [filesecret.New](#mounted-files) | Read mounted files |
-| [Reader.Get](#mounted-files) | Read mounted files |
-| [awssecret.New](#aws-secrets) | Read from AWS Secrets Manager |
-| [gcpsecret.New](#google-secrets) | Read from Google Secret Manager |
-| [azuresecret.New](#azure-secrets) | Read from Azure Key Vault |
-| [vaultsecret.New](#vault-secrets) | Read from Vault KV v2 |
-| [Func.Get](#reader-adapter) | Adapt an existing reader |
-| [ErrNotFound](#reader-adapter) | Adapt an existing reader |
-| [Writer.Set](#mutation-errors) | Handle an uncertain write |
-| [ErrIndeterminate](#mutation-errors) | Handle an uncertain write |
-| [secrettest.New](#application-testing) | Test replacements and deletion |
-| [Store.Set](#application-testing) | Test replacements and deletion |
-| [Store.Delete](#application-testing) | Test replacements and deletion |
+| Core | [Func.Get](#reader-adapter) · [Reader.Get](#mounted-files) · [Store.Delete](#application-testing) · [Store.Set](#application-testing) · [Writer.Set](#mutation-errors) |
+| Driver Constructors | [awssecret.New](#aws-secrets) · [azuresecret.New](#azure-secrets) · [filesecret.New](#mounted-files) · [gcpsecret.New](#google-secrets) · [vaultsecret.New](#vault-secrets) |
+| Errors | [ErrIndeterminate](#mutation-errors) · [ErrNotFound](#reader-adapter) |
+| Testing | [secrettest.New](#application-testing) |
 
 
 ## Examples
