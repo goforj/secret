@@ -136,12 +136,31 @@ Import only the capabilities and drivers your application needs. Provider SDK de
 
 ## Runnable Examples
 
-| Workflow | Run from this checkout |
-| --- | --- |
-| [Mounted files](examples/files/main.go) | `go -C examples run ./files` |
-| [Reader adapter](examples/reader/main.go) | `go -C examples run ./reader` |
-| [Uncertain writes](examples/errors/main.go) | `go -C examples run ./errors` |
-| [Application tests](examples/testing_test.go) | `go -C examples test -run TestStore -v` |
+Run from the repository root:
+
+**[Mounted files](examples/files/main.go)**
+
+```sh
+go -C examples run ./files
+```
+
+**[Reader adapter](examples/reader/main.go)**
+
+```sh
+go -C examples run ./reader
+```
+
+**[Uncertain writes](examples/errors/main.go)**
+
+```sh
+go -C examples run ./errors
+```
+
+**[Application tests](examples/testing_test.go)**
+
+```sh
+go -C examples test -run TestStore -v
+```
 
 These offline programs are executed by the shared example runner and checked against the output comments beside their calls. Test fixtures use public placeholder values.
 
