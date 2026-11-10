@@ -1,12 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="124" height="24" viewBox="0 0 124 24" role="img" aria-label="unit tests: 83">
+<svg xmlns="http://www.w3.org/2000/svg" width="92" height="20" viewBox="0 0 92 20" role="img" aria-label="unit tests: 83">
   <title>unit tests: 83</title>
-  <defs><clipPath id="badge"><rect width="124" height="24" rx="6"/></clipPath></defs>
+  <defs>
+    <linearGradient id="shade" x2="0" y2="100%"><stop offset="0" stop-color="#bbb" stop-opacity=".1"/><stop offset="1" stop-opacity=".1"/></linearGradient>
+    <clipPath id="badge"><rect width="92" height="20" rx="3"/></clipPath>
+  </defs>
   <g clip-path="url(#badge)">
-    <rect width="124" height="24" fill="#263247"/>
-    <rect x="90" width="34" height="24" fill="#5369ca"/>
+    <rect width="92" height="20" fill="#555"/>
+    <rect x="70" width="22" height="20" fill="#4c1"/>
+    <rect width="92" height="20" fill="url(#shade)"/>
   </g>
-  <g fill="#fff" font-family="Verdana,DejaVu Sans,sans-serif" font-size="11" text-anchor="middle">
-    <text x="45" y="16">unit tests</text>
-    <text x="107" y="16">83</text>
+  <g font-family="Verdana,DejaVu Sans,sans-serif" font-size="11" text-anchor="middle">
+    <g fill="#010101" fill-opacity=".3"><text x="35" y="15">unit tests</text><text x="81" y="15">83</text></g>
+    <g fill="#fff"><text x="35" y="14">unit tests</text><text x="81" y="14">83</text></g>
   </g>
 </svg>

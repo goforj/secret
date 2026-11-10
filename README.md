@@ -5,9 +5,9 @@
 <p align="center">Read, replace, and delete bound secrets through a small Go API.</p>
 
 <p align="center">
+  <a href="LICENSE"><img src="docs/assets/badges/summary-license.svg" alt="License: MIT"></a>
+  <a href="https://go.dev"><img src="docs/assets/badges/summary-go.svg" alt="Go: 1.24.4+"></a>
   <img src="docs/assets/badges/summary-status.svg" alt="Status: unreleased">
-  <img src="docs/assets/badges/summary-go.svg" alt="Go: 1.24.4+">
-  <img src="docs/assets/badges/summary-license.svg" alt="License: MIT">
   <img src="docs/assets/badges/summary-coverage.svg" alt="Library unit coverage: 100%">
   <img src="docs/assets/badges/summary-tests.svg" alt="Executed library unit tests">
 </p>

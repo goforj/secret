@@ -126,24 +126,28 @@ func ExampleSections(root string) (string, string, error) {
 	return index.String(), examples.String(), nil
 }
 
-// badge centers padded labels inside a shared rounded clip so neither segment can square off an end.
-func badge(label, value string) string {
-	left := len(label)*7 + 20
-	right := len(value)*7 + 20
+// badge matches the compact flat badges used by sibling libraries while keeping evidence local.
+func badge(label, value, color string) string {
+	left := len(label)*6 + 10
+	right := len(value)*6 + 10
 	width := left + right
-	return fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="24" viewBox="0 0 %d 24" role="img" aria-label="%s: %s">
+	return fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="20" viewBox="0 0 %d 20" role="img" aria-label="%s: %s">
   <title>%s: %s</title>
-  <defs><clipPath id="badge"><rect width="%d" height="24" rx="6"/></clipPath></defs>
+  <defs>
+    <linearGradient id="shade" x2="0" y2="100%%"><stop offset="0" stop-color="#bbb" stop-opacity=".1"/><stop offset="1" stop-opacity=".1"/></linearGradient>
+    <clipPath id="badge"><rect width="%d" height="20" rx="3"/></clipPath>
+  </defs>
   <g clip-path="url(#badge)">
-    <rect width="%d" height="24" fill="#263247"/>
-    <rect x="%d" width="%d" height="24" fill="#5369ca"/>
+    <rect width="%d" height="20" fill="#555"/>
+    <rect x="%d" width="%d" height="20" fill="%s"/>
+    <rect width="%d" height="20" fill="url(#shade)"/>
   </g>
-  <g fill="#fff" font-family="Verdana,DejaVu Sans,sans-serif" font-size="11" text-anchor="middle">
-    <text x="%g" y="16">%s</text>
-    <text x="%g" y="16">%s</text>
+  <g font-family="Verdana,DejaVu Sans,sans-serif" font-size="11" text-anchor="middle">
+    <g fill="#010101" fill-opacity=".3"><text x="%g" y="15">%s</text><text x="%g" y="15">%s</text></g>
+    <g fill="#fff"><text x="%g" y="14">%s</text><text x="%g" y="14">%s</text></g>
   </g>
 </svg>
-`, width, width, html.EscapeString(label), html.EscapeString(value), html.EscapeString(label), html.EscapeString(value), width, width, left, right, float64(left)/2, html.EscapeString(label), float64(left)+float64(right)/2, html.EscapeString(value))
+`, width, width, html.EscapeString(label), html.EscapeString(value), html.EscapeString(label), html.EscapeString(value), width, width, left, right, html.EscapeString(color), width, float64(left)/2, html.EscapeString(label), float64(left)+float64(right)/2, html.EscapeString(value), float64(left)/2, html.EscapeString(label), float64(left)+float64(right)/2, html.EscapeString(value))
 }
 
 // icon wraps original vector paths in the compact family badge treatment.
@@ -224,8 +228,8 @@ func Generate(root string) error {
 	if _, err := LoadEvidence(root, "integration", true); err != nil {
 		return err
 	}
-	for key, pair := range map[string][2]string{"status": {"status", "unreleased"}, "go": {"Go", "1.24.4+"}, "license": {"license", "MIT"}, "coverage": {"unit coverage", "100%"}, "tests": {"unit tests", fmt.Sprint(unit.Tests)}} {
-		if err := write(root, "docs/assets/badges/summary-"+key+".svg", badge(pair[0], pair[1])); err != nil {
+	for key, pair := range map[string][3]string{"status": {"status", "unreleased", "#6c757d"}, "go": {"go", "1.24.4+", "#007ec6"}, "license": {"license", "MIT", "#007ec6"}, "coverage": {"unit coverage", "100%", "#4c1"}, "tests": {"unit tests", fmt.Sprint(unit.Tests), "#4c1"}} {
+		if err := write(root, "docs/assets/badges/summary-"+key+".svg", badge(pair[0], pair[1], pair[2])); err != nil {
 			return err
 		}
 	}
